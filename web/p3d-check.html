@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+  p3d-check.html — v0.6.6 一次性调试页（测完可从部署位删，源文件保留）
+  干什么：iframe 加载真实编舞主页（#3d 自动开 3D 面板），同源驱动真实页面验证
+  loop 接缝混合是否进了主页真实路径：
+    ① 播放态跨回卷点 → blendFrom 应建立、blendT≈phase（scrubTo 收到 blendLoopSeams:true）
+    ② 暂停态同位置 → blendFrom 应为 null（拖动精确语义未被偷改）
+    ③ 播放态回卷+0.5s（出混合窗）→ blendFrom 应清除
+  若时间轴上没有 loop 动作，临时注入一条 /golddance（起点 100s），测完恢复原状。
+  结果写进本页正文与标题，供无障碍读取。
+-->
+<html lang="zh">
+<head><meta charset="utf-8"><title>P3D-CHECK</title>
+<style>body{background:#111;color:#dfd;font:14px/1.8 monospace;margin:20px;white-space:pre-wrap}iframe{width:960px;height:620px;border:1px solid #444;display:block;margin-top:10px}</style>
+</head>
+<body>
+<div id="log">等待主页与 3D 面板就绪…</div>
+<iframe id="f" src="./choreo-helper-app.html#3d"></iframe>
+<script>
+var logEl = document.getElementById('log');
+function L(s){ logEl.textContent += '\n' + s; document.title = 'P3D|' + String(s).slice(0, 60); }
+function done(msg){ L(msg); logEl.textContent += '\n[完成]'; document.title = 'P3D-DONE'; }
+
+(function wait(attempt){
+  var w = document.getElementById('f').contentWindow;
+  var D = w && w.__p3dDebug;
+  var ok = D && w.store && D().engine && D().engine.timeline && D().engine.timeline.length;
+  if (!ok) { if (attempt > 150) { done('超时：主页/面板未就绪'); } else setTimeout(function(){wait(attempt+1);}, 300); return; }
+  run(w, D(), w.store);
+})(0);
+
+function findLoop(e){
+  var lib = e.clipLibrary, tl = e.timeline;
+  for (var i = 0; i < tl.length; i++) {
+    var c = lib[tl[i].clipName];
+    if (c && c.type === 'loop') return { E: tl[i], C: c };
+  }
+  return null;
+}
+
+function run(w, d, s){
+  var found = findLoop(d.engine), injected = null;
+  if (!found) {
+    // 注入一条 loop 动作（不动原数组元素，结束后整体恢复）
+    injected = JSON.parse(JSON.stringify(s.dancers));
+    s.dancers[0].actionClips.push({ start: 100, data: { command: '/golddance' } });
+    L('时间轴无 loop 动作，已临时注入 /golddance@100s，等待动作库自动补拉…');
+  }
+  var t0 = Date.now();
+  (function waitLoop(){
+    var cur = w.__p3dDebug(), e2 = cur.engine;
+    var hit = e2 && findLoop(e2);
+    if (!hit) {
+      if (Date.now() - t0 > 20000) { restore(); done('超时：golddance 未注册（clipLibrary 键数 ' + (e2 ? Object.keys(e2.clipLibrary).length : '无引擎') + '）'); return; }
+      setTimeout(waitLoop, 400); return;
+    }
+    test(w, w.__p3dDebug().engine, s, hit.E, hit.C);
+  })();
+
+  function restore(){
+    if (injected) { try { s.dancers.length = 0; Array.prototype.push.apply(s.dancers, injected); } catch (err) { L('恢复失败: ' + err); } }
+  }
+
+  function test(w, e, s, E, C){
+    var W = E.start + C.duration, ch = null;
+    for (var j = 0; j < e.characters.length; j++) if (e.characters[j].name === E.char) ch = e.characters[j];
+    if (!ch) { restore(); done('P3D-NOCHAR'); return; }
+    var sv = s.currentTime, sp = s.isPlaying;
+    var go = function(n, f){ if (n <= 0) { f(); return; } w.requestAnimationFrame(function(){ go(n-1, f); }); };
+    L('选中 loop 动作 ' + C.name + '（' + C.duration.toFixed(2) + 's，起点 ' + E.start + 's）');
+    s.isPlaying = true; w.__p3dSeek(W + 0.05);
+    go(4, function(){
+      var a = '播放态@回卷+0.05s: phase=' + ch.clipTime.toFixed(3) + ' blend=' + (ch.blendFrom ? '有(对)' : '无(错!)') + ' blendT=' + ch.blendT.toFixed(3);
+      s.isPlaying = false; w.__p3dSeek(W + 0.05);
+      go(4, function(){
+        var b = '暂停态@回卷+0.05s: phase=' + ch.clipTime.toFixed(3) + ' blend=' + (ch.blendFrom ? '有(错!)' : '无(对)');
+        s.isPlaying = true; w.__p3dSeek(W + 0.5);
+        go(4, function(){
+          var c2 = '播放态@回卷+0.5s: phase=' + ch.clipTime.toFixed(3) + ' blend=' + (ch.blendFrom ? '有(错!)' : '无(对)');
+          s.isPlaying = sp; w.__p3dSeek(sv); restore();
+          done(a + '\n' + b + '\n' + c2);
+        });
+      });
+    });
+  }
+}
+</script>
+</body>
+</html>

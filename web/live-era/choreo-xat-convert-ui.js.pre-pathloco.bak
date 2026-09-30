@@ -1,0 +1,156 @@
+// 插件内 XAT 转换入口（TASK-20260917-PLUGIN-XAT-INVOCATION）：资料库弹窗里的一节——
+// 输入 bt_common PAP 与对应基础 SKLB 的游戏相对路径（可从当前角色已绑定资源读取），
+// 调插件后台转换（45s/调用超时、可取消、失败显式分类），成功后把网页剪辑 JSON 存进
+// 当前角色档案的资料库。只经 ChoreoAPI 出口；不动档案骨架，产物只落本机 IndexedDB。
+(function(root){
+  'use strict';
+  // 与库内 el(tag, class, text) 同形：第二参是 class（样式走 style.cssText），第三参才是显示文字
+  function t(tag,cls,text){var e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
+  function sklbOf(pap){
+    var m=/^chara\/human\/(c\d{4})\//.exec(pap||'');
+    return m?'chara/human/'+m[1]+'/skeleton/base/b0001/skl_'+m[1]+'b0001.sklb':'';
+  }
+  function buildSection(opts){
+    opts=opts||{};
+    var box=t('details','');box.style.cssText='flex:1 1 100%;min-width:0;border:1px solid #252e3c;border-radius:6px;padding:6px 10px';
+    box.appendChild(t('summary','','🔌 游戏动作转换（插件内 XAT，零手动工具）'));
+    var tip=t('div','','输入或读取当前角色绑定的动作（PAP）路径，插件会用随包转换器把它转成网页动作并保存到当前档案。转换在后台进行，单次调用 45 秒超时；失败会明确说明原因，不会静默跳过。');
+    tip.style.cssText='font-size:12px;line-height:1.7;color:#aab6c8;margin:6px 0';
+    box.appendChild(tip);
+    var row1=t('div','');row1.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px';
+    var papIn=document.createElement('input');papIn.size=64;papIn.placeholder='chara/human/c0101/animation/a0001/bt_common/<时间轴键>.pap';
+    papIn.style.cssText='flex:1 1 320px;min-width:0';
+    var readBtn=t('button','btn','从当前角色读取');
+    readBtn.title='连接插件读取当前人物模型实际绑定的 PAP 与基础骨架路径（需要游戏和插件开着）';
+    row1.appendChild(papIn);row1.appendChild(readBtn);
+    box.appendChild(row1);
+    var skelIn=document.createElement('input');skelIn.size=64;skelIn.placeholder='对应基础骨架 SKLB（由 PAP 的 c#### 自动推导，可改）';
+    skelIn.style.cssText='width:100%;margin-bottom:4px';
+    box.appendChild(skelIn);
+    var row2=t('div','');row2.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px';
+    var nameIn=document.createElement('input');nameIn.size=24;nameIn.placeholder='动作名（留空=时间轴键）';
+    var startBtn=t('button','btn primary','开始转换');
+    var cancelBtn=t('button','btn','取消');cancelBtn.style.display='none';
+    row2.appendChild(nameIn);row2.appendChild(startBtn);row2.appendChild(cancelBtn);
+    box.appendChild(row2);
+    var status=t('div','');status.style.cssText='font-size:12px;line-height:1.7;color:#e8c57a;white-space:pre-line';
+    status.setAttribute('role','status');status.style.display='none';
+    box.appendChild(status);
+    var resultBox=t('div','');resultBox.style.cssText='display:none;font-size:12px;line-height:1.7;margin-top:4px';
+    var importBtn=t('button','btn primary','⬇ 存入当前档案资料库');
+    var dlSkel=t('button','btn','下载骨架 JSON');
+    resultBox.appendChild(importBtn);resultBox.appendChild(dlSkel);
+    box.appendChild(resultBox);
+    var boundList=t('div','');boundList.style.cssText='display:none;font-size:12px;color:#7d8a9c;margin-top:4px;max-height:140px;overflow:auto';
+    box.appendChild(boundList);
+
+    papIn.addEventListener('change',function(){if(!skelIn.value||skelIn.value===sklbOf(papIn.dataset.prev||''))skelIn.value=sklbOf(papIn.value);papIn.dataset.prev=papIn.value});
+    papIn.addEventListener('input',function(){skelIn.value=sklbOf(papIn.value)});
+
+    var jobId=null,pollTimer=null,clip=null,skeletonJson=null;
+    function say(msg){status.style.display='';status.textContent=msg;if(opts.report)opts.report(msg)}
+    function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
+    function dead(){return opts.isCancelled?opts.isCancelled():!box.isConnected}
+
+    readBtn.onclick=function(){
+      if(typeof ChoreoAPI==='undefined'){say('API 客户端未加载');return}
+      say('正在读取当前角色绑定的动作资源…');
+      ChoreoAPI.game.api('/character/assets?animationBindings=1').then(function(j){
+        if(dead())return;
+        if(!j||!j.available){say(j&&j.message||'当前角色不可读（需要游戏与插件在线）');return}
+        var paps=[],skel='';
+        (j.resources||[]).forEach(function(r){
+          if(r.group==='skeleton'&&r.slot===0&&/\.sklb$/.test(r.path))skel=r.path;
+          else if(/^pap/.test(r.group)&&/\.pap$/.test(r.path))paps.push(r.path);
+        });
+        if(skel)skelIn.value=skel;
+        boundList.style.display='';boundList.textContent='';
+        boundList.appendChild(t('div','','当前角色骨架：'+(skel||'未读到')+'；已绑定 PAP '+paps.length+' 个（点击填入）：'));
+        paps.slice(0,50).forEach(function(p){
+          var b=t('button','btn',p.split('/').pop());b.title=p;b.style.cssText='margin:2px 4px 2px 0';
+          b.onclick=function(){papIn.value=p;skelIn.value=sklbOf(p);papIn.dataset.prev=p};
+          boundList.appendChild(b);
+        });
+        say('已读取绑定资源：骨架 '+(skel?'就绪':'缺失')+'，PAP '+paps.length+' 个（仅列出当前已加载的；也可手输 bt_common 路径）');
+      }).catch(function(e){say('读取失败：'+((e&&e.detail)||e.message||e))});
+    };
+
+    startBtn.onclick=function(){
+      if(typeof ChoreoAPI==='undefined'){say('API 客户端未加载');return}
+      var pap=papIn.value.trim(),skel=skelIn.value.trim()||sklbOf(pap);
+      var name=nameIn.value.trim()||(pap?pap.split('/').pop().replace(/\.pap$/,''):'');
+      if(!pap||!skel){say('请先提供 PAP 与骨架路径');return}
+      stopPoll();clip=null;skeletonJson=null;resultBox.style.display='none';
+      say('正在启动转换…');
+      ChoreoAPI.game.api('/xat/convert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({papPath:pap,skeletonPath:skel,name:name})})
+        .then(function(j){
+          if(dead())return;
+          if(!j||!j.ok){say((j&&j.message)||'启动失败');return}
+          jobId=j.jobId;cancelBtn.style.display='';
+          say('转换已开始（作业 '+jobId+'）…');
+          pollTimer=setInterval(poll,1000);
+        }).catch(function(e){say('启动失败：'+((e&&e.detail)||e.message||e))});
+    };
+
+    function poll(){
+      if(dead()){stopPoll();return}
+      ChoreoAPI.game.api('/xat/status?id='+encodeURIComponent(jobId)).then(function(j){
+        if(dead()||!j||!j.ok||!j.job)return;
+        var job=j.job;
+        if(job.state==='running'){say('进行中：'+job.stage+'（'+(job.elapsedMs/1000).toFixed(1)+'s）');return}
+        stopPoll();cancelBtn.style.display='none';
+        if(job.state==='succeeded'){
+          say('转换成功：'+job.message);
+          ChoreoAPI.game.api('/xat/status?id='+encodeURIComponent(jobId)+'&includeResult=1',{timeoutMs:15000}).then(function(r){
+            if(dead()||!r||!r.ok||!r.job)return;
+            clip=JSON.parse(r.job.clipJson);skeletonJson=r.job.skeletonJson;
+            resultBox.style.display='';
+            checkAlignment(clip);
+          }).catch(function(e){say('取结果失败：'+((e&&e.detail)||e.message||e))});
+        }else if(job.state==='cancelled'){say('已取消。');
+        }else{say('失败（'+job.errorKind+'）：'+job.message);}
+      }).catch(function(e){stopPoll();cancelBtn.style.display='none';say('状态查询失败：'+((e&&e.detail)||e.message||e))});
+    }
+
+    function checkAlignment(clipObj){
+      if(!root.ChoreoLibrary||!ChoreoLibrary.available())return;
+      ChoreoLibrary.getSkeleton().then(function(skel){
+        if(!skel||!skel.bones)return;
+        var indices=new Set(skel.bones.map(function(x){return 'bone_'+x.i}));var bad=[];
+        Object.keys(clipObj.bones||{}).forEach(function(k){if(!indices.has(k))bad.push(k)});
+        say('转换成功：'+(clipObj.bones?Object.keys(clipObj.bones).length:0)+' 骨。骨架对齐：'+(bad.length?('当前档案骨架缺少 '+bad.length+' 个骨骼索引，播放可能不完整（可换匹配档案或导入配套骨架核对）'):'与当前档案骨架索引一致'));
+      }).catch(function(){});
+    }
+
+    cancelBtn.onclick=function(){
+      if(!jobId)return;
+      ChoreoAPI.game.api('/xat/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:jobId})})
+        .then(function(){say('已请求取消…')}).catch(function(e){say('取消失败：'+((e&&e.detail)||e.message||e))});
+    };
+
+    importBtn.onclick=function(){
+      if(!clip||!root.ChoreoLibrary){say('没有可保存的转换结果');return}
+      var name=clip.name||nameIn.value.trim()||('xat-'+jobId);
+      var save=function(){ChoreoLibrary.putClip(name,clip).then(function(){
+        say('已存入当前档案：/'+name+'（在 3D 预览的动作列表选用）');
+        if(window.__p3dLibChanged)window.__p3dLibChanged();
+      }).catch(function(e){say('保存失败：'+e.message)})};
+      ChoreoLibrary.clipIndex().then(function(idx){
+        var exists=(idx||[]).some(function(c){return c.name===name});
+        if(exists&&!window.confirm('当前档案已有同名动作「'+name+'」，覆盖它？'))return;
+        save();
+      }).catch(save);
+    };
+
+    dlSkel.onclick=function(){
+      if(!skeletonJson)return;
+      var blob=new Blob([skeletonJson],{type:'application/json'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+      a.download=((clip&&clip.offlinePrototype&&clip.offlinePrototype.sourceSkeleton)||'skeleton')+'-skeleton.json';
+      a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+    };
+
+    return box;
+  }
+  root.ChoreoXatConvertUI={buildSection:buildSection};
+})(typeof window!=='undefined'?window:globalThis);

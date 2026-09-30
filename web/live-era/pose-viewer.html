@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<!-- 这个页面是干嘛的：姿势预览页——从插件 48795 端口拉参考骨架和录制动作，
+     支持两种显示：真 3D 蒙皮模型（model.glb/gltf，放同目录即可，骨骼按 FF14 骨名 j_* 直配）
+     和线框火柴人兜底。缩放按参考姿势实测身高自适应，不依赖硬编码单位。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>姿势预览 · 骨骼动画</title>
+<style>
+  html,body{margin:0;height:100%;background:#0d1420;color:#cdd8e8;font:13px/1.5 system-ui,"Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden}
+  #app{display:flex;height:100%}
+  #side{width:230px;background:#131c2b;border-right:1px solid #263650;padding:10px;display:flex;flex-direction:column}
+  #search{width:100%;box-sizing:border-box;padding:6px 8px;background:#0d1420;border:1px solid #2c3e5c;border-radius:4px;color:#cdd8e8;font-size:12px}
+  #list{flex:1;overflow-y:auto;margin-top:8px}
+  .item{padding:5px 8px;border-radius:3px;cursor:pointer;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item:hover{background:#1c2a40}
+  .item.sel{background:#2d5a8a;color:#bfe0ff}
+  #view{flex:1;position:relative}
+  canvas{display:block}
+  #bar{position:absolute;left:12px;right:12px;bottom:12px;background:#131c2bd9;border:1px solid #263650;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;backdrop-filter:blur(4px)}
+  #time{font-family:ui-monospace,Consolas,monospace;font-size:14px;color:#7eb3ff;min-width:64px}
+  #slider{flex:1;accent-color:#4a9eff}
+  #name{font-size:13px;color:#e8f0fa;min-width:80px}
+  #poseinfo{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#6f9fd8;min-width:110px}
+  #hint{position:absolute;top:12px;left:12px;background:#131c2bd9;border:1px solid #263650;border-radius:8px;padding:6px 10px;font-size:11px;color:#8fa3bd;max-width:70%}
+  #homeLink{position:absolute;top:12px;right:12px;background:#131c2bd9;border:1px solid #263650;border-radius:8px;padding:6px 10px;font-size:11px;color:#8fa3bd;text-decoration:none;z-index:5}
+  #homeLink:hover{color:#bfe0ff;border-color:#2d5a8a}
+  #homeLink3d{position:absolute;top:52px;right:12px;background:#131c2bd9;border:1px solid #263650;border-radius:8px;padding:6px 10px;font-size:11px;color:#8fa3bd;text-decoration:none;z-index:5}
+  #homeLink3d:hover{color:#bfe0ff;border-color:#2d5a8a}
+  button{background:#1c2a40;border:1px solid #2c3e5c;color:#cdd8e8;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:12px}
+  button:hover{background:#2d5a8a}
+  button:disabled{opacity:.4;cursor:default}
+  /* SEC-1 配对浮层：私有读要配对码，没配对时盖住页面要一次 */
+  #pairBox input{font-size:13px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <input id="search" placeholder="搜索动作...">
+    <div id="list"></div>
+  </div>
+  <div id="view">
+    <div id="hint">引擎启动中…</div>
+    <a id="homeLink" href="./">← 编舞主页</a>
+    <a id="homeLink3d" href="./#3d" title="打开编舞主页并自动弹出 3D 预览面板">主页+3D预览</a>
+    <div id="bar">
+      <span id="name">未加载</span>
+      <button id="playBtn">▶</button>
+      <input type="range" id="slider" min="0" max="100" value="0" step="0.1">
+      <span id="time">0.0s</span>
+      <span id="poseinfo"></span>
+      <button id="modeBtn" disabled>线框</button>
+    </div>
+  </div>
+</div>
+<script>
+  // 引擎启动看门狗 + 全局错误捕获：页面自己报告卡在哪一步，方便排查
+  window.addEventListener('error', function(e){
+    var h = document.getElementById('hint');
+    if (h && !window.__viewerReady) h.textContent = '页面错误：' + (e.message || e.type);
+  });
+  setTimeout(function(){
+    if(!window.__viewerReady){
+      document.getElementById('hint').textContent = '引擎启动失败：' + (window.__viewerStage || '未知阶段');
+    }
+  }, 8000);
+</script>
+<script type="module">
+// Three.js 全部本地化（libs/ 目录，相对导入自包含），不再依赖 CDN——
+// 网页插件 v0.6.2+ 的静态服务直接出这些文件
+window.__viewerStage = '加载本地 Three.js 库';
+let THREE, GLTFLoader;
+// 页面不是从插件 http 服务打开时（内嵌浏览器视图/file:// 直开），相对模块导入会报
+// Failed to resolve module specifier —— 改用绝对地址（静态服务按来源允许列表回显 ACAO；
+// SEC-1 起私有读另要 X-Choreo-Token 配对头，见 secHeaders/needPairing）
+const BASE = (location.protocol === 'http:' || location.protocol === 'https:') ? './' : 'http://localhost:48795/';
+try {
+  THREE = await import(BASE + 'libs/three.module.js');
+  window.__viewerStage = '加载本地 GLTFLoader';
+  ({ GLTFLoader } = await import(BASE + 'libs/loaders/GLTFLoader.js'));
+} catch (e) {
+  window.__viewerStage = '本地库加载失败：' + ((e && (e.message || String(e))) || '未知');
+  document.getElementById('hint').textContent = '引擎启动失败：' + window.__viewerStage;
+  throw e;
+}
+window.__viewerStage = '库就绪，拉取骨架';
+window.__viewerReady = true;
+
+const API = 'http://localhost:48795';
+const $ = id => document.getElementById(id);
+const hint = $('hint');
+
+// ---------- SEC-1 配对：私有读（骨架/动作/模型）要配对码 ----------
+// 与编舞主页同一个 localStorage 键（本页若是 48795 同源打开，storage 与 file:// 各自独立，
+// 各粘一次即可）。normToken 与主页一致：全角→半角、去空白、转大写
+function normToken(t){
+  return String(t||'').replace(/\u3000/g,' ')
+    .replace(/[\uFF01-\uFF5E]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0))
+    .replace(/\s+/g,'').toUpperCase();
+}
+function secHeaders(extra){
+  const h = extra || {};
+  try {
+    const t = normToken(localStorage.getItem('choreo_pairToken'));
+    if(t && /^[\x21-\x7E]+$/.test(t)) h['X-Choreo-Token'] = t;
+  } catch(e) { /* 个别环境禁 localStorage：按匿名请求，插件回 403 走 needPairing */ }
+  return h;
+}
+// 403 = 插件说"要配对"：盖一层输入框，粘一次存好整页重试（boot 全部重新走）
+function needPairing(){
+  if($('pairBox')) return;
+  const box = document.createElement('div');
+  box.id = 'pairBox';
+  box.style.cssText = 'position:fixed;inset:0;background:#0d1420e6;display:flex;align-items:center;justify-content:center;z-index:99';
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:#131c2b;border:1px solid #263650;border-radius:8px;padding:18px 22px;max-width:430px;font-size:13px';
+  inner.innerHTML =
+    '<div style="color:#e8f0fa;margin-bottom:8px">需要配对</div>' +
+    '<div style="color:#8fa3bd;margin-bottom:10px">读取动作/骨架/模型也要配对码：游戏里输入 <b>/choreo pair</b> 查看配对码，粘贴到这里（本浏览器只需一次）。</div>';
+  const input = document.createElement('input');
+  input.id = 'pairInput';
+  input.placeholder = '8 位配对码';
+  input.style.cssText = 'width:100%;box-sizing:border-box;padding:6px 8px;background:#0d1420;border:1px solid #2c3e5c;border-radius:4px;color:#cdd8e8';
+  const okBtn = document.createElement('button');
+  okBtn.id = 'pairOk';
+  okBtn.textContent = '保存并重试';
+  okBtn.style.marginTop = '10px';
+  const btnRow = document.createElement('div');
+  btnRow.style.textAlign = 'right';
+  btnRow.appendChild(okBtn);
+  inner.appendChild(input);
+  inner.appendChild(btnRow);
+  box.appendChild(inner);
+  document.body.appendChild(box);
+  const save = () => {
+    const v = normToken(input.value);
+    if(!v) return;
+    try { localStorage.setItem('choreo_pairToken', v); } catch(e) {}
+    location.reload();   // 最省事的重试：整页重来，全部请求带上新配对码
+  };
+  okBtn.onclick = save;
+  input.addEventListener('keydown', e => { if(e.key === 'Enter') save(); });
+  input.focus();
+}
+
+// ---------- Three.js 场景 ----------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1420);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+camera.position.set(0, 0.9, 3.2);
+camera.lookAt(0, 0.85, 0);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+$('view').appendChild(renderer.domElement);
+function resize(){
+  const w = $('view').clientWidth, h = $('view').clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl = new THREE.DirectionalLight(0xffffff, 1.2);
+dl.position.set(2, 3, 4);
+scene.add(dl);
+// 地面网格
+const grid = new THREE.GridHelper(4, 20, 0x263650, 0x1a2537);
+scene.add(grid);
+
+// ---------- 线框骨骼（兜底显示） ----------
+let skeleton = null;   // {count, bones:[{i,n,p,t,q}]}
+let boneObjs = [];     // 每骨 {pivot:Object3D, line:Line(指向本骨的连线，挂在父骨上)}
+let skelGroup = new THREE.Group();
+scene.add(skelGroup);
+// 参考姿势下的世界包围盒（骨骼单位），用于自适应缩放
+function skelWorldBox(){
+  skelGroup.updateMatrixWorld(true);
+  const box = new THREE.Box3(), v = new THREE.Vector3();
+  for(const b of skeleton.bones) if(boneObjs[b.i]) box.expandByPoint(boneObjs[b.i].pivot.getWorldPosition(v));
+  return box;
+}
+
+async function loadSkeleton(){
+  const res = await fetch(API + '/export/skeleton', { headers: secHeaders() });
+  if(res.status === 403){ needPairing(); throw new Error('需要配对'); }
+  skeleton = await res.json();
+  buildVisual();
+  resize();
+}
+
+function buildVisual(){
+  while(skelGroup.children.length) skelGroup.remove(skelGroup.children[0]);
+  boneObjs = new Array(skeleton.count);
+  for(const b of skeleton.bones){
+    const pivot = new THREE.Object3D();
+    boneObjs[b.i] = { pivot, line:null };
+    skelGroup.add(pivot);   // 先全挂组上，下一步重挂父骨（保持世界层次正确）
+  }
+  const lineMat = new THREE.LineBasicMaterial({color:0x4a9eff});
+  for(const b of skeleton.bones){
+    const obj = boneObjs[b.i];
+    if(b.p >= 0 && boneObjs[b.p]){
+      skelGroup.remove(obj.pivot);
+      boneObjs[b.p].pivot.add(obj.pivot);
+      // 连线端点每帧按骨骼局部位置刷新（真正连接关节）
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+      obj.line = new THREE.Line(g, lineMat);
+      boneObjs[b.p].pivot.add(obj.line);
+    }
+  }
+  applyPose(null, 0);
+  // 自适应缩放：参考姿势实测身高 → 缩放到 1.7m 高、脚踩地面。
+  // 不预设骨骼单位（厘米/米），换客户端单位不同也不怕。
+  const box = skelWorldBox();
+  const h = Math.max(box.max.y - box.min.y, 1e-6);
+  const s = 1.7 / h;
+  skelGroup.scale.setScalar(s);
+  skelGroup.position.y = -box.min.y * s;
+  // 关节球固定世界尺寸（≈2cm），线框模式下看清关节位置
+  const jr = 0.02 / s;
+  const jointGeo = new THREE.SphereGeometry(jr, 8, 8);
+  const jointMat = new THREE.MeshBasicMaterial({color:0x7eb3ff});
+  for(const b of skeleton.bones){
+    const j = new THREE.Mesh(jointGeo, jointMat);
+    boneObjs[b.i].pivot.add(j);
+  }
+}
+
+// ---------- 蒙皮模型（model.glb / model.gltf） ----------
+let model = null, skinned = null, modelGroup = null;
+let boneNode = [];       // 每根游戏骨骼对应的模型节点（按 skeleton.bones 顺序，无匹配为 null）
+let modelRatio = 1;      // 模型单位 / 骨骼单位（按局部偏移长度中位数探测）
+let mode = 'wire';       // 'wire' | 'model'
+let refHeadY = 0;        // 参考姿势头部高度（米，缩放后），诊断用
+
+async function loadModelFile(url){
+  // 先 fetch 校验（老版插件静态服务只认两个页面，会把模型请求答成 JSON 错误）
+  // SEC-1：模型是个人数据要配对码；.gltf 引用的外部 model.bin 由 GLTFLoader 自己发，
+  // setRequestHeader 让子资源也带上（module/classic 两版 loader 都支持）
+  const res = await fetch(url, { headers: secHeaders() });
+  if(res.status === 403){ needPairing(); throw new Error('需要配对'); }
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const ct = res.headers.get('content-type') || '';
+  if(ct.includes('application/json')) throw new Error('拿到的不是模型文件');
+  const buf = await res.arrayBuffer();
+  return await new Promise((resolve, reject) => {
+    const ld = new GLTFLoader();
+    ld.setRequestHeader(secHeaders());
+    ld.parse(buf, BASE, resolve, reject);
+  });
+}
+async function tryLoadModel(){
+  let gltf = null;
+  for(const f of ['model.glb', 'model.gltf']){
+    try { gltf = await loadModelFile(BASE + f); break; } catch(e) { /* 试下一个 */ }
+  }
+  if(!gltf){ setStatus('线框模式（未找到模型文件 model.glb/gltf，用 Meddle 导出后放同目录）'); return; }
+  model = gltf.scene;
+  model.traverse(o => { if(!skinned && o.isSkinnedMesh) skinned = o; });
+  if(!skinned){ setStatus('线框模式（模型里没有蒙皮网格）'); model = null; return; }
+
+  // 按骨骼名直配（大小写兜底一次）
+  const byName = {}, byLower = {};
+  model.traverse(o => { if(o.name){ byName[o.name] = o; (byLower[o.name.toLowerCase()] ||= o); } });
+  boneNode = skeleton.bones.map(b => byName[b.n] || byLower[b.n.toLowerCase()] || null);
+  const matched = boneNode.filter(Boolean).length;
+  if(matched < 10){
+    setStatus(`线框模式（模型骨骼名不匹配 ${matched}/${skeleton.count}，需要 FF14 标准骨名 j_kosi 等）`);
+    model = skinned = null; return;
+  }
+
+  // 单位比例：对比两侧同名骨骼的局部偏移长度，取中位数
+  const rs = [];
+  skeleton.bones.forEach((b, i) => {
+    const node = boneNode[i];
+    if(!node) return;
+    const a = node.position.length(), c = Math.hypot(b.t[0], b.t[1], b.t[2]);
+    if(a > 1e-6 && c > 1e-6) rs.push(a / c);
+  });
+  if(rs.length){ rs.sort((x,y)=>x-y); modelRatio = rs[rs.length >> 1]; }
+
+  // 挂进场景；参考姿势归一化：缩放到 1.7m、脚踩地面
+  modelGroup = new THREE.Group();
+  modelGroup.add(model);
+  scene.add(modelGroup);
+  applyPose(null, 0);
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3(), v = new THREE.Vector3();
+  boneNode.forEach(n => { if(n) box.expandByPoint(n.getWorldPosition(v)); });
+  const h = Math.max(box.max.y - box.min.y, 1e-6);
+  const s = 1.7 / h;
+  modelGroup.scale.setScalar(s);
+  modelGroup.position.y = -box.min.y * s;
+
+  mode = 'model';
+  skelGroup.visible = false;
+  const btn = $('modeBtn');
+  btn.disabled = false;
+  btn.textContent = '线框';
+  applyPose(null, 0);
+  setStatus(`模型模式 · 骨骼匹配 ${matched}/${skeleton.count} · 单位比 1:${modelRatio.toPrecision(3)} · 身高 1.7m`);
+}
+
+function setStatus(text){
+  hint.textContent = text;
+}
+
+// ---------- 姿势应用 ----------
+// pose: {bone_i: {q:[x,y,z,w], t:[x,y,z]}} 或 null = 参考姿势
+function applyPose(clip, time){
+  if(!skeleton) return;
+  for(const b of skeleton.bones){
+    const obj = boneObjs[b.i];
+    let q = b.q, t = b.t;
+    if(clip && clip.bones && clip.bones['bone_' + b.i]){
+      const s = sampleChannel(clip.bones['bone_' + b.i], time, b.t);
+      if(s){ q = s.q; t = s.t; }
+    }
+    if(obj && obj.pivot){
+      obj.pivot.quaternion.set(q[0], q[1], q[2], q[3]);
+      obj.pivot.position.set(t[0], t[1], t[2]);
+      if(obj.line){
+        const p = obj.line.geometry.attributes.position;
+        p.setXYZ(1, t[0], t[1], t[2]);
+        p.needsUpdate = true;
+      }
+    }
+    const node = mode === 'model' ? boneNode[b.i] : null;
+    if(node){
+      node.quaternion.set(q[0], q[1], q[2], q[3]);
+      node.position.set(t[0]*modelRatio, t[1]*modelRatio, t[2]*modelRatio);
+    }
+  }
+  if(mode === 'model' && model){
+    model.updateMatrixWorld(true);
+    if(skinned) skinned.skeleton.update();
+  }
+  updateTelemetry();
+}
+
+// 诊断：头部世界高度（两种模式统一算），拖滑条时数值变 = 管线通
+function updateTelemetry(){
+  let y = null;
+  if(mode === 'model' && model){
+    const head = boneNode[46];   // j_kao
+    if(head){ const v = head.getWorldPosition(new THREE.Vector3()); y = v.y; }
+  } else if(skeleton && boneObjs[46]){
+    const v = boneObjs[46].pivot.getWorldPosition(new THREE.Vector3());
+    y = v.y;
+  }
+  $('poseinfo').textContent = y == null ? '' : ('头高 ' + y.toFixed(2) + 'm');
+}
+
+function sampleChannel(ch, time, refT){
+  const q = ch.q;
+  if(!q || q.length === 0) return null;
+  const getT = idx => {
+    if(ch.t && ch.t[idx]) return ch.t[idx].slice(1);
+    return refT || [0,0,0];   // 无位移通道 → 用参考姿势位置（不塌）
+  };
+  let lo = 0, hi = q.length - 1;
+  if(time <= q[0][0]) return {q:q[0].slice(1), t:getT(0)};
+  if(time >= q[hi][0]) return {q:q[hi].slice(1), t:getT(hi)};
+  while(hi - lo > 1){
+    const mid = (lo+hi)>>1;
+    if(q[mid][0] <= time) lo = mid; else hi = mid;
+  }
+  const a = q[lo], b = q[hi];
+  const alpha = (time - a[0]) / (b[0] - a[0]);
+  const qa = new THREE.Quaternion(a[1],a[2],a[3],a[4]);
+  const qb = new THREE.Quaternion(b[1],b[2],b[3],b[4]);
+  qa.slerp(qb, alpha);
+  const ta = getT(lo), tb = getT(hi);
+  return {q:[qa.x,qa.y,qa.z,qa.w],
+          t:[ta[0]+(tb[0]-ta[0])*alpha, ta[1]+(tb[1]-ta[1])*alpha, ta[2]+(tb[2]-ta[2])*alpha]};
+}
+
+// ---------- clip 加载 ----------
+let curClip = null;
+let curName = '';
+async function loadClip(name){
+  $('name').textContent = name + ' …';
+  const res = await fetch(API + '/export/getclip?name=' + encodeURIComponent(name), { headers: secHeaders() });
+  if(res.status === 403){ needPairing(); return; }
+  const j = await res.json();
+  if(j.error){ $('name').textContent = name + ' ✗'; return; }
+  curClip = j;
+  curName = name;
+  $('name').textContent = name + ' (' + j.duration.toFixed(1) + 's)';
+  $('slider').max = j.duration;
+  $('slider').value = 0;
+  applyPose(curClip, 0);
+  $('time').textContent = '0.0s';
+}
+
+// ---------- 列表 ----------
+let allNames = [];
+async function loadList(){
+  const res = await fetch(API + '/export/list', { headers: secHeaders() });
+  if(res.status === 403){ needPairing(); return; }
+  const j = await res.json();
+  allNames = j.clips || [];
+  renderList('');
+}
+function renderList(filter){
+  const el = $('list');
+  el.innerHTML = '';
+  const f = filter.toLowerCase();
+  for(const n of allNames){
+    if(f && !n.toLowerCase().includes(f)) continue;
+    const d = document.createElement('div');
+    d.className = 'item' + (n === curName ? ' sel' : '');
+    d.textContent = n;
+    d.onclick = () => { curName = n; loadClip(n); renderList($('search').value); };
+    d.ondblclick = () => togglePlay();
+    el.appendChild(d);
+  }
+}
+$('search').oninput = e => renderList(e.target.value);
+
+// ---------- 显示模式切换 ----------
+$('modeBtn').onclick = () => {
+  if(!model) return;
+  if(mode === 'model'){
+    mode = 'wire';
+    skelGroup.visible = true;
+    modelGroup.visible = false;
+    $('modeBtn').textContent = '模型';
+    setStatus('线框模式（手动切换）');
+  } else {
+    mode = 'model';
+    skelGroup.visible = false;
+    modelGroup.visible = true;
+    $('modeBtn').textContent = '线框';
+    setStatus('模型模式（手动切换）');
+  }
+  applyPose(curClip, parseFloat($('slider').value) || 0);
+};
+
+// ---------- 播放控制 ----------
+let playing = false;
+let playT = 0;
+let lastTs = 0;
+function togglePlay(){
+  if(!curClip) return;
+  playing = !playing;
+  $('playBtn').textContent = playing ? '⏸' : '▶';
+  if(playing) playT = parseFloat($('slider').value);
+}
+$('playBtn').onclick = togglePlay;
+$('slider').oninput = e => {
+  playing = false; $('playBtn').textContent = '▶';
+  const t = parseFloat(e.target.value);
+  if(curClip){ applyPose(curClip, t); }
+  $('time').textContent = t.toFixed(1) + 's';
+};
+
+function tick(ts){
+  requestAnimationFrame(tick);
+  if(!lastTs) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  if(playing && curClip){
+    playT += dt;
+    if(playT > curClip.duration) playT = 0;
+    $('slider').value = playT;
+    $('time').textContent = playT.toFixed(1) + 's';
+    applyPose(curClip, playT);
+  }
+  skelGroup.rotation.y += dt * 0.15; // 缓慢旋转展示
+  if(modelGroup) modelGroup.rotation.y = skelGroup.rotation.y;
+  renderer.render(scene, camera);
+}
+
+(async function boot(){
+  await loadSkeleton();
+  const box = skelWorldBox();
+  refHeadY = (boneObjs[46] ? boneObjs[46].pivot.getWorldPosition(new THREE.Vector3()).y : 0);
+  setStatus(`线框模式 · 参考身高 1.7m（骨架原始身高 ${ (box.max.y - box.min.y).toPrecision(4) } 单位，脚 ${box.min.y.toPrecision(3)} ~ 头 ${box.max.y.toPrecision(3)}）`);
+  loadList();
+  tryLoadModel();   // 模型加载不阻塞线框先显示
+  requestAnimationFrame(tick);
+})().catch(e => {
+  // 配对浮层已经说明原因；这里只兜住未配对中断的 boot，别让看门狗误报"启动失败"
+  if(!$('pairBox')) setStatus('启动失败：' + ((e && e.message) || e));
+});
+</script>
+</body>
+</html>

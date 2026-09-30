@@ -1,0 +1,116 @@
+// 本舞者技能资源导入：使用既有档案资料库，取消/切项目/改绑均使迟到读取失效。
+(function(root){
+  'use strict';
+  function attach(box,skill,di,current,adoptTiming,selectedTiming){
+    var state=root.store,chosen=state.dancers[di],binding=chosen.profileId||'',input=document.createElement('input'),button=document.createElement('button'),line=document.createElement('p'),busy=false,revision=0;
+    input.type='file';input.accept='.json';input.hidden=true;input.setAttribute('aria-label','本舞者技能动作文件');
+    button.type='button';button.className='btn';button.textContent='导入本舞者技能动作';
+    line.textContent='按角色档案读取真实技能动画；缺失或不兼容会明确提示。网页不显示特效。';
+    function valid(){return current()&&state.dancers[di]===chosen&&(chosen.profileId||'')===binding&&box.isConnected}
+    var timingButton=document.createElement('button'),timing=null;timingButton.type='button';timingButton.className='btn';timingButton.hidden=true;timingButton.textContent='采用本档案实测时序';
+    timingButton.onclick=()=>{if(valid()&&timing&&adoptTiming)adoptTiming(timing)};
+    function showTiming(clip){timing=clip.nativeTiming||null;timingButton.hidden=!timing||!adoptTiming}
+    async function status(){
+      var rev=revision;
+      try{
+        var profile=binding?await ChoreoLibrary.getProfile(binding):await ChoreoLibrary.getActiveProfile();if(!valid()||rev!==revision)return;
+        if(!profile){line.textContent='未绑定：请先选择角色档案';return}
+        var clip=await ChoreoLibrary.getClip(ChoreoSkillMotion.name(skill.id,selectedTiming),profile.id);if(!valid()||rev!==revision)return;
+        if(!clip){line.textContent='缺失：「'+profile.name+'」尚无 Action'+skill.id+' 的动作；可先编排，准备资源后离线预览。';return}
+        var b=ChoreoSkillMotion.validate(clip,skill.id,{profileId:profile.id,fingerprint:profile.skeletonHash,skeleton:profile.skeleton});
+        showTiming(clip);
+        line.textContent='动作就绪：'+b.source.variant+' · 动画阶段 '+b.phase.duration.toFixed(3)+' 秒。仅用于网页预览。';
+        if(clip.nativeTiming)line.textContent+=' 本档案实测咏唱 '+clip.nativeTiming.castMs/1000+' 秒；动画按原生读数回看，采样间隔上限 '+Math.ceil(clip.nativeTiming.maxSampleGap*1000)+' 毫秒。不是其他角色或下次演出的准入证明。';
+        else if(clip.castPreview)line.textContent+=' 咏唱实际时序尚未核验，不能按自定义时长播放。';
+      }catch(e){if(valid()&&rev===revision)line.textContent=String(e.message||e)}
+    }
+    button.onclick=function(){if(!busy)input.click()};
+    input.onchange=async function(){
+      var file=input.files[0];if(!file)return;revision++;busy=true;button.disabled=true;
+      try{
+        if(file.size>16*1024*1024)throw Error('技能动作文件超过16MiB');
+        var profile=binding?await ChoreoLibrary.getProfile(binding):await ChoreoLibrary.getActiveProfile();
+        if(!valid()||!profile)throw Error('角色档案已变化，请重新打开');
+        var text=JSON.stringify(profile),clip=JSON.parse(await file.text());
+        ChoreoSkillMotion.validate(clip,skill.id,{profileId:profile.id,fingerprint:profile.skeletonHash,skeleton:profile.skeleton});
+        if(!valid())throw Error('项目或舞者已变化，未导入');
+        await ChoreoLibrary.putClip(ChoreoSkillMotion.name(skill.id,clip.nativeTiming),clip,profile.id,{profileText:text,current:valid,activeProfileId:binding?null:profile.id});
+        if(!valid())return;
+        root.dispatchEvent(new CustomEvent('choreo-skill-motion-imported'));
+        showTiming(clip);
+        line.textContent='已保存到「'+profile.name+'」：'+clip.motionBinding.source.variant+'。拖动播放头检查动作；原始关键帧已保留。';
+      }catch(e){if(valid())line.textContent=e.message}
+      finally{busy=false;button.disabled=false;input.value=''}
+    };
+    box.append(input,button,line,timingButton);
+    var savedLabel=document.createElement('label'),savedSelect=document.createElement('select');savedLabel.textContent='本档案已保存的实测动画时序 ';savedSelect.setAttribute('aria-label','本档案已保存的实测动画时序');savedLabel.appendChild(savedSelect);box.appendChild(savedLabel);
+    async function listSaved(){
+      try{var profile=binding?await ChoreoLibrary.getProfile(binding):await ChoreoLibrary.getActiveProfile();if(!valid()||!profile)return;
+        var index=await ChoreoLibrary.allClipIndex();if(!valid())return;
+        savedSelect.replaceChildren();var blank=document.createElement('option');blank.value='';blank.textContent='选择已保存记录（不自动采用）';savedSelect.appendChild(blank);
+        (index[profile.id]||[]).filter(m=>m.name&&m.name.startsWith('__action_'+skill.id+'@observed_')).forEach(m=>{var o=document.createElement('option');o.value=m.name;o.textContent='Action'+skill.id+' · 观测 '+m.name.split('@observed_')[1].slice(0,12);savedSelect.appendChild(o)});
+      }catch(e){if(valid())line.textContent=String(e.message||e)}
+    }
+    savedSelect.onchange=async()=>{var rev=++revision;timing=null;timingButton.hidden=true;try{var profile=binding?await ChoreoLibrary.getProfile(binding):await ChoreoLibrary.getActiveProfile();if(!valid()||rev!==revision||!profile||!savedSelect.value)return;var clip=await ChoreoLibrary.getClip(savedSelect.value,profile.id);if(!valid()||rev!==revision)return;ChoreoSkillMotion.validate(clip,skill.id,{profileId:profile.id,fingerprint:profile.skeletonHash,skeleton:profile.skeleton});showTiming(clip);line.textContent='已读取本档案保存的实测咏唱 '+clip.nativeTiming.castMs+'ms，角色 #'+clip.nativeTiming.actorId+' / 职业 #'+clip.nativeTiming.jobId+'。请明确采用后再应用；当前状态仍需复核。'}catch(e){if(valid()&&rev===revision)line.textContent=String(e.message||e)}};
+    Promise.resolve().then(listSaved);
+    if(root.ChoreoSkillImport){
+      var batch=document.createElement('input'),batchButton=document.createElement('button');batch.type='file';batch.accept='.json';batch.multiple=true;batch.hidden=true;batch.setAttribute('aria-label','本舞者批量技能动作文件');batchButton.type='button';batchButton.className='btn';batchButton.textContent='批量导入本舞者技能动作';
+      batchButton.onclick=()=>{if(!busy)batch.click()};
+      batch.onchange=async function(){
+        if(!batch.files.length)return;revision++;busy=true;button.disabled=batchButton.disabled=true;
+        try{
+          var profile=binding?await ChoreoLibrary.getProfile(binding):await ChoreoLibrary.getActiveProfile();if(!valid()||!profile)throw Error('角色档案已变化');
+          var snapshot=JSON.stringify(profile),result=await ChoreoSkillImport.run(batch.files,profile,{current:valid,read:(name,id)=>ChoreoLibrary.getClip(name,id),write:(name,clip,id)=>ChoreoLibrary.putClip(name,clip,id,{profileText:snapshot,current:valid,activeProfileId:binding?null:profile.id})});
+          if(valid())line.textContent='已导入 '+result.saved.length+' 个技能，保留已有 '+result.kept.length+' 个。请逐段检查角色动作。';
+        }catch(e){if(valid()){var r=e.importResult||{saved:[],kept:[]};line.textContent=e.message+'；已保存 '+r.saved.length+' 个，保留已有 '+r.kept.length+' 个。'}}
+        finally{root.dispatchEvent(new CustomEvent('choreo-skill-motion-imported'));busy=false;button.disabled=batchButton.disabled=false;batch.value=''}
+      };
+      box.append(batch,batchButton);
+    }
+    if(root.ChoreoSkillCoverage){
+      var check=document.createElement('button'),report=document.createElement('div'),liveConditions=null;check.type='button';check.className='btn';check.textContent='检查本项目全部技能资源';report.setAttribute('role','status');report.className='skill-project-report';
+      var scanner=ChoreoSkillCoverage.create({current:valid,conditions:()=>liveConditions,profile:id=>id?ChoreoLibrary.getProfile(id):ChoreoLibrary.getActiveProfile(),clip:(name,id)=>ChoreoLibrary.getClip(name,id)});
+      check.onclick=async function(){
+        check.disabled=true;report.textContent='正在逐舞者检查动画资源…';liveConditions=null;
+        try{
+
+          if(!valid())return;
+          var rows=await scanner.inspect(state);if(!valid())return;
+          if(!rows){report.textContent='项目或角色已变化，请重新检查';return}
+          report.replaceChildren();
+          // 批量铺开汇总：按不同 Action 聚合，直接指出哪些 Action 在哪些舞者档案上还缺资源。
+          var sum=ChoreoSkillCoverage.summary(rows),block=document.createElement('p');block.style.whiteSpace='pre-line';
+          block.textContent='批量铺开汇总：'+sum.totals.actions+' 个不同 Action · 全舞者有资源 '+sum.totals.readyActions+' · 缺资源 '+sum.totals.missingActions
+            +(sum.totals.missingActions?'\n'+sum.actions.filter(a=>a.missingCount>0).map(a=>'#'+a.actionId+' '+(a.name||'')+'：'+a.entries.filter(e=>e.status==='missing'||e.status==='unbound'||e.status==='missing-model').map(e=>e.dancer+'（'+({missing:'缺动画',unbound:'未绑定档案',missingModel:'档案无模型','missing-model':'档案无模型'}[e.status]||e.status)+'）').join('、')).join('\n'):'');
+          report.appendChild(block);
+          // 补资源工作单导出：把缺资源 Action 变成带下一步与 --variant 清单模板的离线工作单（零请求）。
+          if(sum.totals.missingActions){
+            var exportBtn=document.createElement('button');exportBtn.type='button';exportBtn.className='btn small';exportBtn.style.marginLeft='8px';exportBtn.textContent='导出补资源工作单';
+            exportBtn.onclick=async function(){
+              try{
+                if(!valid())return;
+                var profile=binding?await ChoreoLibrary.getProfile(binding):await ChoreoLibrary.getActiveProfile();
+                if(!valid())return;
+                ChoreoSkillCoverage.downloadWorksheet(sum,{projectId:state.projectId,dancer:chosen.name,
+                  profileId:profile&&profile.id||'',profileName:profile&&profile.name||'',skeletonHash:profile&&profile.skeletonHash||''},profile);
+                line.textContent='已导出补资源工作单（'+sum.totals.missingActions+' 个缺资源 Action）；按工作单内下一步逐项捕获与转换，空 sha256 须以实际捕获填充。';
+              }catch(e){if(valid())line.textContent=String(e.message||e)}
+            };
+            report.appendChild(exportBtn);
+          }
+          var title=document.createElement('p');title.textContent='逐舞者检查：'+rows.filter(r=>r.kind!=='motion').length+' 个技能、'+rows.filter(r=>r.kind==='motion').length+' 个普通动作；网页可预览 '+rows.filter(r=>r.status==='ready').length+'，时序冲突 '+rows.filter(r=>r.status==='conflict').length+'。网页不检查技能前置条件；游戏按时尝试，失败跳过。';report.appendChild(title);
+          rows.forEach(r=>{
+            var item=document.createElement('p');item.dataset.eventId=r.eventId;item.textContent=r.dancer+' · '+r.name+(r.kind==='motion'?'':' #'+r.actionId)+'\n网页：'+r.message;item.style.whiteSpace='pre-line';
+            var jump=document.createElement('button');jump.type='button';jump.className='btn small';jump.textContent='定位 '+(r.startMs/1000)+' 秒';jump.onclick=()=>{if(valid()&&root.seekTimelinePosition)root.seekTimelinePosition(r.startMs/1000)};item.appendChild(jump);
+            var edit=document.createElement('button');edit.type='button';edit.className='btn small';edit.textContent='调整触发时刻';edit.onclick=()=>{if(!valid())return;if(r.kind==='motion'){var who=ChoreoAbilityPlan.performers(state).find(p=>p.id===r.performerId),clips=who&&(state.dancers[who.index].actionClips||[]).filter(c=>c.id===r.clipId);if(clips&&clips.length===1)root.openClipTime(clips[0]);else report.textContent='普通动作已变化，请重新检查';return}var found=ChoreoAbilityPlan.rows(state).filter(x=>x.event.id===r.eventId&&x.source===r.performerId),person=ChoreoAbilityPlan.performers(state).find(x=>x.id===r.performerId);if(found.length!==1||!person){report.textContent='片段已变化，请重新检查';return}root.ChoreoAbilityUI.open({type:'action',id:Number(r.actionId),name:r.name},person.index,0,found[0])};item.appendChild(edit);
+
+            report.appendChild(item);
+          });
+        }catch(e){if(valid())report.textContent=String(e.message||e)}finally{check.disabled=false}
+      };
+      box.append(check,report);
+    }
+    Promise.resolve().then(status);
+  }
+  root.ChoreoSkillMotionUI={attach};
+})(window);

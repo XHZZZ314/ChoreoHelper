@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!--
+  library-check.html — 阶段 3「本地 3D 资料库」可重复验证页（只测资料库本身，不依赖主页/游戏）
+  验什么：
+    ① ChoreoLibrary 加载与 IndexedDB 可用性
+    ② putClip/getClip 往返（gzip 无损：取回的 JSON 与存入完全一致；hash 有值；enc 如实标记）
+    ③ clipIndex / hasClips 索引
+    ④ putSkeleton/getSkeleton 往返 + 哈希
+    ⑤ putCatalog/getCatalog 往返
+    ⑥ putModelFile/getModelFile 二进制字节往返
+    ⑦ exportBundle → 清空 → importBundle 整库迁移（动作/骨架/目录全回来；v2 逐动作归属 0 待归档）
+    ⑧ 坏包拒绝三连：随机字节 / 版本号 999 / 截断文件；异体骨架备份 → 建新档案不整体拒绝（2026-08-30 角色档案口径）
+    ⑨ FIX-D 档案隔离：两个档案的同名动作互不覆盖互不误读；缺省 API=活动档案；待归档认领 API 拒绝坏目标
+  安全：测试全程用独立测试库（useDb('choreo3dlib-selftest')），不碰真实资料库；结束清空。
+  怎么跑：http://localhost:48795/library-check.html（游戏开着就行）；结果写进正文与标题
+        （LIB-PASS / LIB-FAIL:n）。
+-->
+<html lang="zh">
+<head><meta charset="utf-8"><title>LIB-CHECK</title>
+<style>body{background:#111;color:#dfd;font:14px/1.8 monospace;margin:20px;white-space:pre-wrap}</style>
+</head>
+<body>
+<div id="log">开始…</div>
+<script src="choreo-library.js"></script>
+<script>
+var logEl = document.getElementById('log');
+var fails = 0, passes = 0;
+function L(s){ logEl.textContent += '\n' + s; }
+function ok(name, cond, detail){
+  if (cond) { passes++; L('  ✔ ' + name + (detail ? '（' + detail + '）' : '')); }
+  else { fails++; L('  ✘ ' + name + (detail ? '（' + detail + '）' : '')); }
+  document.title = 'LIB|' + passes + '过' + fails + '败';
+}
+function finish(){ L('[完成] ' + passes + ' 项通过，' + fails + ' 项失败'); document.title = fails ? ('LIB-FAIL:' + fails) : 'LIB-PASS'; }
+function arrEq(a, b){
+  if (a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+var CLIP_A = {
+  name: 'bow', duration: 7.98, type: 'once',
+  bones: {
+    bone_46: { q: [[0, 0.1, 0.2, 0.3, 0.9], [1, 0.2, 0.3, 0.4, 0.8]], t: [[0, 0, 1.4, 0]] },
+    bone_2:  { q: [[0, 0, 0, 0, 1]], t: [[0, 0.02, 0.4, 0]] }
+  }
+};
+var CLIP_B = { name: 'golddance', duration: 8.0, type: 'loop', bones: { bone_46: { q: [[0, 0.5, 0.5, 0.5, 0.5]], t: [[0, 0, 1.5, 0]] } } };
+var SKEL_A = { count: 2, bones: [
+  { i: 0, n: 'j_kosi', p: -1, t: [0, 0.42, 0], q: [0, 0, 0, 1] },
+  { i: 1, n: 'j_kao',  p: 0,  t: [0, 0.2, 0],  q: [0.1, 0, 0, 0.99] }
+]};
+var SKEL_B = { count: 2, bones: [
+  { i: 0, n: 'root', p: -1, t: [0, 0.5, 0], q: [0, 0, 0, 1] },
+  { i: 1, n: 'head', p: 0,  t: [0, 0.3, 0], q: [0, 0, 0, 1] }
+]};
+
+(async function run(){
+  try {
+    // ① 加载与可用性
+    ok('ChoreoLibrary 脚本已加载', !!window.ChoreoLibrary);
+    ok('IndexedDB 可用', window.ChoreoLibrary && ChoreoLibrary.available());
+    if (!window.ChoreoLibrary || !ChoreoLibrary.available()) { finish(); return; }
+    ChoreoLibrary.useDb('choreo3dlib-selftest');
+    await ChoreoLibrary.clear();
+
+    // ④ 骨架先建档（FIX-D：动作归属活动档案，骨架要先在，备份导出才能带上"动作+所属档案"）
+    await ChoreoLibrary.putSkeleton(SKEL_A);
+    var skBack = await ChoreoLibrary.getSkeleton();
+    ok('putSkeleton/getSkeleton 往返', JSON.stringify(skBack) === JSON.stringify(SKEL_A));
+    var skInfo = await ChoreoLibrary.getSkeletonInfo();
+    ok('骨架哈希有值', skInfo && skInfo.hash.length >= 32 && skInfo.boneCount === 2);
+
+    // ② clip 往返（无损；写进当前活动档案并盖上骨架指纹）
+    await ChoreoLibrary.putClip('bow', CLIP_A);
+    await ChoreoLibrary.putClip('golddance', CLIP_B);
+    var back = await ChoreoLibrary.getClip('bow');
+    ok('putClip/getClip 无损往返', JSON.stringify(back) === JSON.stringify(CLIP_A));
+    var idx = await ChoreoLibrary.clipIndex();
+    var bowMeta = idx.filter(function(c){ return c.name === 'bow'; })[0];
+    ok('clipIndex 有元数据', idx.length === 2 && !!bowMeta && bowMeta.type === 'once', idx.length + ' 条');
+    ok('压缩生效且如实标记', bowMeta.enc === 'gzip' && bowMeta.sizeEnc > 0 && bowMeta.sizeRaw > 0, bowMeta.enc + ' ' + bowMeta.sizeRaw + '→' + bowMeta.sizeEnc + ' 字节');
+    ok('动作哈希有值（备份校验用）', typeof bowMeta.hash === 'string' && bowMeta.hash.length >= 32);
+    ok('写入盖上当前档案骨架指纹', bowMeta.skeletonHash === skInfo.hash);
+    ok('不存在的动作返回 null', (await ChoreoLibrary.getClip('nope')) === null);
+    var hav = await ChoreoLibrary.hasClips(['bow', 'nope']);
+    ok('hasClips 批量查询', hav[0] === true && hav[1] === false);
+
+    // ⑤ 目录
+    await ChoreoLibrary.putCatalog({ emotes: [{ name: '鞠躬', command: '/bow', category: 'usual' }], races: [], actions: [], classJobs: [] });
+    var cat = await ChoreoLibrary.getCatalog();
+    ok('putCatalog/getCatalog 往返', cat && cat.emotes.length === 1 && cat.emotes[0].command === '/bow');
+
+    // ⑥ 模型文件（二进制字节往返）
+    var bin = new Uint8Array(2048);
+    crypto.getRandomValues(bin);
+    await ChoreoLibrary.putModelFile('model.bin', new Blob([bin]));
+    var mf = await ChoreoLibrary.getModelFile('model.bin');
+    var mfBytes = new Uint8Array(await mf.arrayBuffer());
+    ok('putModelFile/getModelFile 字节往返', arrEq(bin, mfBytes));
+    var files = await ChoreoLibrary.getModelFiles();
+    ok('getModelFiles 列表', files.length === 1 && files[0].name === 'model.bin');
+
+    // ⑦ 整库导出→清空→导入
+    var st1 = await ChoreoLibrary.stats();
+    var bundle = await ChoreoLibrary.exportBundle();
+    ok('exportBundle 产出备份', bundle && bundle.size > 1000, bundle.size + ' 字节');
+    await ChoreoLibrary.clear();
+    var stEmpty = await ChoreoLibrary.stats();
+    ok('clear 清空资料库', stEmpty.clips === 0 && !stEmpty.skeleton && stEmpty.modelFiles.length === 0);
+    var rep = await ChoreoLibrary.importBundle(bundle);
+    var st2 = await ChoreoLibrary.stats();
+    ok('importBundle 恢复动作', rep.clips === 2 && st2.clips === 2);
+    ok('v2 逐动作归属：0 待归档', rep.pending === 0, 'pending=' + rep.pending);
+    ok('importBundle 恢复骨架', st2.skeleton && st2.skeletonHash.length >= 32);
+    ok('importBundle 恢复目录', st2.catalog === true);
+    ok('importBundle 恢复模型文件', st2.modelFiles.length === 1 && st2.modelFiles[0] === 'model.bin');
+    var back2 = await ChoreoLibrary.getClip('golddance');
+    ok('导入后动作内容仍无损', JSON.stringify(back2) === JSON.stringify(CLIP_B));
+
+    // ⑧ 坏包拒绝
+    var rej;
+    rej = await ChoreoLibrary.importBundle(new Blob([crypto.getRandomValues(new Uint8Array(5000))])).then(function(){return null;}, function(e){return e.message;});
+    ok('随机字节文件拒绝', rej && rej.indexOf('不是编舞资料库') >= 0, rej);
+
+    var buf = new Uint8Array(await bundle.arrayBuffer());
+    buf[4] = 999 & 255; buf[5] = 0; buf[6] = 0; buf[7] = 0;   // 版本号改成 999（小端）
+    rej = await ChoreoLibrary.importBundle(new Blob([buf])).then(function(){return null;}, function(e){return e.message;});
+    ok('版本号不支持拒绝', rej && rej.indexOf('版本') >= 0, rej);
+
+    rej = await ChoreoLibrary.importBundle(bundle.slice(0, bundle.size - 100)).then(function(){return null;}, function(e){return e.message;});
+    ok('截断文件拒绝', rej && (rej.indexOf('不完整') >= 0), rej);
+
+    // 骨架不同的备份（2026-08-30 角色档案口径）：不再整体拒绝 → 并成第二套档案，原库与活动档案不动
+    var bundleSkelHash = await ChoreoLibrary.hashObject(SKEL_A); // 备份主骨架（SKEL_A）的指纹
+    await ChoreoLibrary.clear();
+    await ChoreoLibrary.putSkeleton(SKEL_B);
+    var repP = await ChoreoLibrary.importBundle(bundle).then(function(r){return r;}, function(e){ return null; });
+    ok('异体备份导入不拒绝', !!repP && repP.failed.length === 0 && repP.pending === 0, repP ? ('profiles=' + repP.profiles) : '被拒绝');
+    var stP = await ChoreoLibrary.stats();
+    ok('异体备份并成第二套档案', stP.profileCount === 2, '档案=' + stP.profileCount);
+    ok('异体导入后活动档案还是原来的（骨架不被覆盖）', stP.profile && stP.profile.skeletonHash !== bundleSkelHash);
+    var profsP = await ChoreoLibrary.listProfiles();
+    ok('两套档案骨架指纹各归各', profsP.filter(function (p) { return p.hasSkeleton; }).length === 2);
+
+    // ⑨ FIX-D：动作按档案隔离——同名动作在两套档案下互不覆盖互不误读
+    var pidA9 = null;
+    profsP.forEach(function (p) { if (p.skeletonHash === bundleSkelHash) pidA9 = p.id; }); // 备份档案（SKEL_A，有 2 条动作）
+    var idxA9 = await ChoreoLibrary.clipIndex(pidA9);
+    ok('备份档案收到它自己的 2 条动作', !!pidA9 && idxA9.length === 2, pidA9 ? ('条数=' + idxA9.length) : '没找到档案');
+    ok('当前档案（SKEL_B）0 条不串', (await ChoreoLibrary.clipIndex()).length === 0);
+    var CLIP_A2 = JSON.parse(JSON.stringify(CLIP_A)); CLIP_A2.duration = 3.5;
+    await ChoreoLibrary.putClip('bow', CLIP_A2); // 当前档案写同名动作
+    var bowB9 = await ChoreoLibrary.getClip('bow');
+    var bowA9 = await ChoreoLibrary.getClip('bow', pidA9);
+    ok('同名动作各取各的（活动 3.5s / 备份 7.98s）', bowB9.duration === 3.5 && bowA9.duration === 7.98);
+    ok('同名动作 hash 按档案不同', (await ChoreoLibrary.clipIndex())[0].hash !== idxA9.filter(function(c){return c.name==='bow';})[0].hash);
+    await ChoreoLibrary.deleteClip('bow', pidA9);
+    ok('删备份档案的 bow 不影响活动档案', (await ChoreoLibrary.getClip('bow', pidA9)) === null && (await ChoreoLibrary.getClip('bow')).duration === 3.5);
+    var rej9 = await ChoreoLibrary.assignPendingClips(['bow'], '').then(function(){return null;}, function(e){return e.message;});
+    ok('认领到空档案被拒', rej9 && rej9.indexOf('选择') >= 0, rej9);
+    ok('待归档清单可读（当前 0 条）', (await ChoreoLibrary.pendingClipIndex()).length === 0);
+
+    await ChoreoLibrary.clear();
+  } catch (e) {
+    fails++;
+    L('  ✘ 执行中抛异常：' + (e && e.message));
+  }
+  finish();
+})();
+</script>
+</body>
+</html>

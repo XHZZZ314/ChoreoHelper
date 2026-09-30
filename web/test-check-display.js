@@ -1,0 +1,30 @@
+// 首启空库检查展示回归：底层规则保红，空白编排只把界面提示降黄。
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const badge={children:[],appendChild(n){this.children.push(n)},querySelector(){return this.children.find(n=>n.className==='chk-badge')||null}};
+const store={dancers:[{actionClips:[],switchClips:[],lyricClips:[]}],globalLyrics:[],markers:[],contentExtra:{},checkIssues:[{rule:'no-skeleton',level:'red',message:'资料库里没有参考骨架'}]};
+const ctx={store,window:{},document:{getElementById:id=>id==='btnCheck'?badge:null,createElement:()=>({style:{}})}};
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname,'choreo-check-ui.js'),'utf8'),ctx);
+let passed=0;
+function check(name,condition){assert.ok(condition,name);passed++;console.log('PASS '+name)}
+check('空资料库和空编排识别为首启展示',ctx.checkEmptyLibraryFirstStart([],null,{profileMeta:{},readsComplete:true,hasActiveProfile:false}));
+ctx._checkEmptyLibraryDisplay=true;
+let shown=ctx.checkDisplayIssues(store.checkIssues);
+check('首启展示为黄而底层规则仍红',shown[0].level==='yellow'&&store.checkIssues[0].level==='red');
+ctx.updateCheckBadge();
+check('首启徽标只显示黄1',badge.children[0].textContent===' · 黄1');
+store.dancers[0].actionClips.push({id:1});
+check('已有动作恢复红色展示',!ctx.checkEmptyLibraryFirstStart([],null,{profileMeta:{},readsComplete:true,hasActiveProfile:false}));
+store.dancers[0].actionClips=[];
+store.contentExtra={_doc:{extraTracks:[{type:'ability',events:[{id:'skill'}]}]}};
+check('仅技能轨也不是首启空白编排',!ctx.checkEmptyLibraryFirstStart([],null,{profileMeta:{},readsComplete:true,hasActiveProfile:false}));
+store.contentExtra={_doc:{extraTracks:[{type:'movement',events:[{id:'move'}]}]}};
+check('仅走位轨也不是首启空白编排',!ctx.checkEmptyLibraryFirstStart([],null,{profileMeta:{},readsComplete:true,hasActiveProfile:false}));
+store.contentExtra={};
+check('已有档案不降级',!ctx.checkEmptyLibraryFirstStart([],null,{profileMeta:{p:{}},readsComplete:true,hasActiveProfile:false}));
+check('待归档动作使资料库不再视为空库',!ctx.checkEmptyLibraryFirstStart([],null,{profileMeta:{},hasAnyClips:true,readsComplete:true,hasActiveProfile:false}));
+check('资料库索引不可用不猜首启',!ctx.checkEmptyLibraryFirstStart(null,null,{profileMeta:{},readsComplete:true,hasActiveProfile:false}));
+store.checkIssues.push({rule:'overlap',level:'red'});
+check('其他红色问题不降级',ctx.checkDisplayIssues(store.checkIssues)[1].level==='red');
+console.log(JSON.stringify({passed,failed:0}));

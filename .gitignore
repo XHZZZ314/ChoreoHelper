@@ -1,0 +1,26 @@
+# 编译产物
+[Bb]in/
+[Oo]bj/
+
+# 发布成品目录（可重新构建；当前存的是旧版 0.6.0）
+release/
+
+# 主人的真实角色模型（Meddle 导出）——绝不进仓库，防止将来误推到公开仓库
+# （替身模型源 web/model-standin.gltf 正常入库；部署位的真模型留在盘上不进 git）
+web/dist/ChoreoHelper/model.gltf
+web/dist/ChoreoHelper/model.bin
+# TASK-20260925-PROJECT-REMEDIATION §7 P0：live-era 旧版目录里的同名真模型字节
+# （审计证实 web/live-era/model.bin 与属主私人 Meddle 模型逐字节相同，此前未被本规则覆盖）
+web/live-era/model.bin
+web/live-era/model.glb
+
+# XAT 外部工具二进制（TASK-20260916-SIMPLE-CHOREO-P1-B 分发授权未放行，绝不进仓库）
+web/dist/ChoreoHelper/tools/xat/
+
+# 临时/调试文件
+_t.json
+_tmp_*
+*.log
+
+# ZCode 会话内部产物（不是项目文件）
+.zcode/

@@ -1,0 +1,1247 @@
+/**
+ * choreo-library.js — 编舞助手「本地 3D 资料库」（阶段 3）
+ *
+ * 干嘛的：把骨架、动作 clip、角色模型、动作目录存进浏览器本地（IndexedDB），
+ *        游戏关掉以后网页照样能取到这些资料离线播放。所有存进来的动作 JSON
+ *        用 gzip 无损压缩（浏览器原生 CompressionStream），264 条实测
+ *        1178MB → 约 124MB（10.5%）；不支持压缩的老浏览器会存原始数据并如实标记。
+ *
+ * 谁用它：preview3d.js（骨架/模型/动作 缓存优先，插件在线时补拉）、
+ *        编舞主页（动作目录离线兜底 + 资料库备份窗口）。它自己不碰任何页面 DOM。
+ *
+ * 角色档案（2026-08-30 新增）：「模型 + 骨架」打包成一套有名字的档案，库内可存多套、
+ *        可切换（换角色/换种族不再静默套错骨架——事故见 CONTINUITY 2026-08-30）。
+ *        存储复用现有仓（不升 IndexedDB 版本）：档案本体存 meta 仓（id='profile:<pid>'，
+ *        骨架原文内联），模型文件存 files 仓（键 'pfile:<pid>:<文件名>'），
+ *        活动档案指针存 meta（id='activeProfile'）。旧单套数据首次访问时自动迁移成
+ *        「默认角色」档案，旧 API（getSkeleton/putModelFile…）全部变成"活动档案"的
+ *        薄封装，老调用点行为不变。
+ *
+ * 备份格式（CHLB v2，二进制；v1 只读兼容导入）：
+ *   [0..3]  魔数 "CHLB"
+ *   [4..7]  格式版本号（u32 小端）
+ *   [8..11] 头部 JSON 字节长度（u32 小端）
+ *   [12..]  头部 JSON（补空格对齐到 64 字节，含每段数据的偏移/长度/哈希）
+ *   之后    依次是各条 gzip 动作数据、模型文件的原始字节
+ *   v2 头部里每条动作带 profileId/skeletonHash（逐动作归属，FIX-D/AUD2-009）、
+ *   每个模型文件带内容 hash；v2 导入先全包 preflight（结构/hash/骨架关系/gltf↔bin
+ *   完整性）全部通过才写库，坏包一个字节都不动现有资料。
+ *
+ * 动作按角色隔离（FIX-D/AUD2-008）：动作身份 = (profileId, 动作名)，存 profileClips/
+ * profileClipData 两仓（IndexedDB v2，复合键）。旧全局 clips/clipdata 仓首次访问时
+ * 按骨架指纹迁移：唯一匹配档案 → 迁过去；没指纹/对不上/多套同指纹 → 进「待归档」区
+ * （profileId='__pending__'），主人在资料库窗口选档案认领，绝不静默绑到活动档案。
+ *
+ * 注意：这是经典脚本（file:// 离线入口禁 ES 模块），整个文件包在一个 IIFE 里，
+ *      只把 window.ChoreoLibrary 暴露出去——经典脚本共享全局作用域，不能污染别人。
+ */
+
+(function () {
+  'use strict';
+
+  var DB_NAME = 'choreo3dlib';
+  var DB_VERSION = 2;
+  var BUNDLE_MAGIC = [0x43, 0x48, 0x4C, 0x42];   // "CHLB"
+  var BUNDLE_VERSION = 2;
+  var SCHEMA_VERSION = 1;
+  var PENDING_PID = '__pending__';  // 「待归档动作」虚拟档案：迁移/导入时归属不明的动作先放这里
+
+  var _db = null;            // 已打开的连接
+  var _dbName = DB_NAME;    // useDb() 可换库名（诊断页用独立测试库，不碰真实资料）
+  var _txBackend = null;    // AUD-004 测试注入口：node 单测用假 IndexedDB 事务后端替代真库，传 null 恢复
+
+  // ============ 基础工具 ============
+
+  function available() {
+    try { return typeof indexedDB !== 'undefined' && !!indexedDB; } catch (e) { return false; }
+  }
+
+  function useDb(name) {
+    if (_db && _db.name !== name) { try { _db.close(); } catch (e) {} _db = null; }
+    _dbName = name || DB_NAME;
+    _profEnsured = null;   // 换库（诊断页独立测试库）：档案迁移状态按新库重来
+    _clipsMigrated = null; // 动作迁移同理
+  }
+
+  // AUD-004：node 单测注入口（window.ChoreoLibrary.useBackend(fn) / useBackend(null) 恢复）。
+  // fn(stores, mode) 返回一个 IDBTransaction 形状的对象；只在测试环境用，产品不传
+  function useBackend(fn) { _txBackend = fn; _profEnsured = null; _clipsMigrated = null; }
+
+  function open() {
+    if (_db) return Promise.resolve(_db);
+    if (!available()) return Promise.reject(new Error('此浏览器不支持 IndexedDB，本地资料库不可用'));
+    return new Promise(function (ok, err) {
+      var rq = indexedDB.open(_dbName, DB_VERSION);
+      rq.onupgradeneeded = function () {
+        var db = rq.result;
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('clips')) db.createObjectStore('clips', { keyPath: 'name' });
+        if (!db.objectStoreNames.contains('clipdata')) db.createObjectStore('clipdata', { keyPath: 'name' });
+        if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'name' });
+        // v2（FIX-D/AUD2-008）：动作按档案隔离的复合键仓；旧 clips/clipdata 保留做迁移源
+        if (!db.objectStoreNames.contains('profileClips')) db.createObjectStore('profileClips', { keyPath: ['profileId', 'name'] });
+        if (!db.objectStoreNames.contains('profileClipData')) db.createObjectStore('profileClipData', { keyPath: ['profileId', 'name'] });
+      };
+      rq.onsuccess = function () {
+        _db = rq.result;
+        _db.onversionchange = function () { try { _db.close(); } catch (e) {} _db = null; };
+        repairOrphans(_db); // AUD-004：每次连接顺手清理历史半条记录（老版本双事务写入可能留下）
+        ok(_db);
+      };
+      rq.onerror = function () { err(rq.error || new Error('资料库打开失败')); };
+    });
+  }
+
+  function tx(stores, mode) {
+    if (_txBackend) return Promise.resolve(_txBackend(stores, mode || 'readonly'));
+    return open().then(function (db) {
+      return db.transaction(stores, mode || 'readonly');
+    });
+  }
+
+  function reqDone(r) {
+    return new Promise(function (ok, err) {
+      r.onsuccess = function () { ok(r.result); };
+      r.onerror = function () { err(r.error || new Error('资料库读写失败')); };
+    });
+  }
+
+  function putOne(store, value) {
+    return tx([store], 'readwrite').then(function (t) { return reqDone(t.objectStore(store).put(value)); });
+  }
+
+  // AUD-004：多条记录在同一个 readwrite 事务里提交，等 transaction complete 才算成功——
+  // 任一条失败整组回滚，杜绝"元数据进了、数据没进"的幽灵动作（IndexedDB 单事务天然原子）
+  function putManyAtomic(ops) {
+    return tx(ops.map(function (o) { return o.store; }), 'readwrite').then(function (t) {
+      return new Promise(function (ok, err) {
+        t.onabort = function () { err(t.error || new Error('资料库事务被中止，本次写入没有保存')); };
+        try {
+          ops.forEach(function (o) { t.objectStore(o.store).put(o.value); });
+        } catch (e) {
+          try { t.abort(); } catch (e2) {}
+          return; // abort 后由 onabort 统一报错
+        }
+        t.oncomplete = function () { ok(); };
+      });
+    });
+  }
+
+  function getOne(store, key) {
+    return tx([store], 'readonly').then(function (t) { return reqDone(t.objectStore(store).get(key)); })
+      .then(function (v) { return v === undefined ? null : v; });
+  }
+
+  // AUD-004：孤儿修复——有元数据没数据、有数据没元数据的半条记录一律清掉。
+  // 只按主键对比，不读大数据本体；清不动就静默放过（下次打开再试），绝不因此挡住资料库使用
+  function repairOrphans(db) {
+    try {
+      var t1 = db.transaction(['clips', 'clipdata'], 'readonly');
+      var r1 = t1.objectStore('clips').getAll();
+      var r2 = t1.objectStore('clipdata').getAllKeys();
+      var t3 = db.transaction(['profileClips', 'profileClipData'], 'readonly');
+      var r3 = t3.objectStore('profileClips').getAll();
+      var r4 = t3.objectStore('profileClipData').getAllKeys();
+      t1.oncomplete = function () {
+        try {
+          var metaNames = {}, dataNames = {}, n = 0;
+          (r1.result || []).forEach(function (r) { metaNames[r.name] = true; });
+          (r2.result || []).forEach(function (k) { dataNames[k] = true; });
+          var t2 = db.transaction(['clips', 'clipdata'], 'readwrite');
+          (r1.result || []).forEach(function (r) { if (!dataNames[r.name]) { t2.objectStore('clips').delete(r.name); n++; } });
+          (r2.result || []).forEach(function (k) { if (!metaNames[k]) { t2.objectStore('clipdata').delete(k); n++; } });
+          t2.oncomplete = function () { if (n) console.info('ChoreoLibrary：清理了 ' + n + ' 条不完整的动作记录'); };
+        } catch (e) {}
+      };
+      // v2 复合键仓同样的半条清理（键是 [profileId, name]）
+      t3.oncomplete = function () {
+        try {
+          var pmeta = {}, pdata = {}, n2 = 0;
+          (r3.result || []).forEach(function (r) { pmeta[r.profileId + '\u0000' + r.name] = true; });
+          (r4.result || []).forEach(function (k) { pdata[k[0] + '\u0000' + k[1]] = true; });
+          var t4 = db.transaction(['profileClips', 'profileClipData'], 'readwrite');
+          (r3.result || []).forEach(function (r) { if (!pdata[r.profileId + '\u0000' + r.name]) t4.objectStore('profileClips').delete([r.profileId, r.name]); });
+          (r4.result || []).forEach(function (k) { if (!pmeta[k[0] + '\u0000' + k[1]]) t4.objectStore('profileClipData').delete(k); });
+        } catch (e) {}
+      };
+    } catch (e) {}
+  }
+
+  // ============ 压缩 / 哈希 ============
+
+  function canGzip() { return typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined'; }
+
+  function gzipBytes(u8) {
+    if (!canGzip()) return Promise.resolve({ blob: new Blob([u8]), enc: 'raw' });
+    return new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'))).blob()
+      .then(function (b) { return { blob: b, enc: 'gzip' }; });
+  }
+
+  function gunzipToText(blob, enc) {
+    if (enc === 'raw' || !canGzip()) {
+      if (enc === 'gzip') return Promise.reject(new Error('此浏览器不支持解压 gzip，动作数据读不出来'));
+      return blob.text();
+    }
+    return new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  }
+
+  function sha256Hex(u8) {
+    if (!(typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest)) return Promise.resolve('');
+    return crypto.subtle.digest('SHA-256', u8).then(function (d) {
+      var b = new Uint8Array(d), s = '';
+      for (var i = 0; i < b.length; i++) s += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+      return s;
+    });
+  }
+
+  function canonBytes(obj) {
+    return new TextEncoder().encode(JSON.stringify(obj));
+  }
+
+  // 对外暴露的规范化哈希（WP-4 体检用：在线拉到的骨架和资料库缓存骨架算同一把 hash 比对）
+  function hashObject(obj) { return sha256Hex(canonBytes(obj)); }
+
+  // ============ 角色档案（模型+骨架 成套管理，2026-08-30） ============
+
+  var LEGACY_FILE_NAMES = ['model.glb', 'model.gltf', 'model.bin']; // 迁移前的旧模型文件键名
+  // 迁移只跑一次（成功后缓存；失败即清除、下次访问重试——LIB-1：一次瞬时 IndexedDB/配额故障
+  // 不能把迁移 promise 毒化到页面关闭。useDb/useBackend 换库/换测试后端时照旧作废）
+  var _profEnsured = null;
+  var _clipsMigrated = null;
+
+  function profKey(pid) { return 'profile:' + pid; }
+  function pfileKey(pid, name) { return 'pfile:' + pid + ':' + name; }
+  function newPid() { return 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
+
+  function txDone(t) {
+    return new Promise(function (ok, err) {
+      t.oncomplete = function () { ok(); };
+      t.onabort = function () { err(t.error || new Error('资料库事务被中止')); };
+    });
+  }
+
+  // 旧单套数据 → 「默认角色」档案。只在库里一套档案都没有时跑一次；
+  // 模型文件搬进档案命名空间（不复制，112MB 不翻倍），旧骨架/旧模型键清掉
+  function ensureProfiles() {
+    if (_profEnsured) return _profEnsured;
+    var p = (async function () {
+      var all = await tx(['meta'], 'readonly').then(function (t) { return reqDone(t.objectStore('meta').getAll()); });
+      var has = (all || []).some(function (r) { return r && r.id && String(r.id).indexOf('profile:') === 0; });
+      if (has) return;
+      var skelRec = (all || []).filter(function (r) { return r && r.id === 'skeleton'; })[0] || null;
+      var files = await tx(['files'], 'readonly').then(function (t) { return reqDone(t.objectStore('files').getAll()); });
+      var legacyFiles = (files || []).filter(function (f) { return LEGACY_FILE_NAMES.indexOf(f.name) >= 0; });
+      if (!skelRec && !legacyFiles.length) return; // 空库/全新安装：等第一次在线建档，不凭空造档案
+      var pid = newPid();
+      // LIB-2：老库的 skeleton 记录可能没有 hash 字段（更老版本落库的）——建档时就按原文算真指纹，
+      // 别把空指纹写进档案，否则自家 v2 备份会被 preflight 误判成"备份可能被篡改"
+      var skelHash = skelRec ? ((skelRec.hash || '') || (skelRec.data ? await hashObject(skelRec.data) : '')) : '';
+      var ops = [{
+        store: 'meta', value: {
+          id: profKey(pid), data: {
+            id: pid, name: '默认角色', createdAt: Date.now(), updatedAt: Date.now(),
+            skeletonHash: skelHash, boneCount: skelRec ? (skelRec.boneCount || 0) : 0,
+            skeleton: skelRec ? skelRec.data : null, modelNames: legacyFiles.map(function (f) { return f.name; })
+          }
+        }
+      }, { store: 'meta', value: { id: 'activeProfile', pid: pid } }];
+      legacyFiles.forEach(function (f) {
+        ops.push({ store: 'files', value: { name: pfileKey(pid, f.name), mime: f.mime, size: f.size, data: f.data, hash: f.hash || '', updatedAt: f.updatedAt } });
+      });
+      await putManyAtomic(ops);
+      try { // 搬迁后清旧键（失败无害：旧键只是多余副本，下次访问不影响档案读取）
+        var t2 = await tx(['meta', 'files'], 'readwrite');
+        t2.objectStore('meta').delete('skeleton');
+        LEGACY_FILE_NAMES.forEach(function (n) { t2.objectStore('files').delete(n); });
+        await txDone(t2);
+      } catch (e) { /* 清不掉就算了 */ }
+    })();
+    _profEnsured = p;
+    p.catch(function () { if (_profEnsured === p) _profEnsured = null; }); // LIB-1：拒绝不缓存，下次重试
+    return p;
+  }
+
+  // FIX-D/AUD2-008：旧全局 clips/clipdata 仓 → 档案仓迁移。
+  // 每条动作按元数据的骨架指纹对号：唯一匹配档案 → 迁入该档案；没指纹/对不上/
+  // 多套同指纹 → 进「待归档」区（PENDING_PID），绝不静默绑到当前活动档案。
+  // 单条动作的"搬入新仓+删旧仓"在同一个事务里：失败旧数据原样保留，下次重试（幂等）。
+  // 所有 clip API 和 stats/exportBundle 开头都 await ensureClips()，所以旧数据在首次
+  // 使用时自动迁完，不需要专门的升级按钮。
+  function ensureClips() {
+    if (_clipsMigrated) return _clipsMigrated;
+    var p = (async function () {
+      await ensureProfiles();
+      var t1 = await tx(['clips', 'clipdata'], 'readonly');
+      // 两个读请求同步发且同步挂回调（同 repairOrphans 的写法）：真 IDB 和假后端都兼容
+      var p1 = reqDone(t1.objectStore('clips').getAll());
+      var p2 = reqDone(t1.objectStore('clipdata').getAllKeys());
+      var metas = await p1;
+      var dataKeys = await p2;
+      var haveData = {};
+      (dataKeys || []).forEach(function (k) { haveData[k] = true; });
+      var todo = (metas || []).filter(function (m) { return m && m.name && haveData[m.name]; });
+      if (!todo.length) return;
+      var lp = await loadProfiles();
+      var byHash = {};  // 指纹 → [档案id]；多于一个=不唯一，进待归档
+      lp.list.forEach(function (p) {
+        var h = p.skeletonHash || '';
+        if (!h) return;
+        (byHash[h] = byHash[h] || []).push(p.id);
+      });
+      var moved = 0, pending = 0;
+      for (var i = 0; i < todo.length; i++) {
+        var m = todo[i];
+        var cands = m.skeletonHash ? (byHash[m.skeletonHash] || []) : [];
+        var pid = cands.length === 1 ? cands[0] : PENDING_PID;
+        if (cands.length === 1) moved++; else pending++;
+        await moveLegacyClip(m, pid);
+      }
+      // 迁移记录（版本+数量，主人问起来有账可查；失败不挡使用）
+      try {
+        var prev = await getOne('meta', 'clipMigration');
+        var rec = prev || { id: 'clipMigration', version: 2, moved: 0, pending: 0 };
+        rec.moved = (rec.moved || 0) + moved;
+        rec.pending = Math.max(rec.pending || 0, 0) + pending;
+        rec.at = Date.now();
+        await putOne('meta', rec);
+      } catch (e) { /* 记不了账就算了 */ }
+      if (moved || pending) console.info('ChoreoLibrary：旧动作迁移完成——归入档案 ' + moved + ' 条，待归档 ' + pending + ' 条');
+    })();
+    _clipsMigrated = p;
+    p.catch(function () { if (_clipsMigrated === p) _clipsMigrated = null; }); // LIB-1：拒绝不缓存，下次重试
+    return p;
+  }
+
+  // 单条旧动作搬家：读旧数据 → 写档案仓两行 → 删旧仓两行，一个事务。失败整体回滚
+  function moveLegacyClip(m, pid) {
+    return tx(['clips', 'clipdata', 'profileClips', 'profileClipData'], 'readwrite').then(function (t) {
+      return new Promise(function (ok, err) {
+        t.onabort = function () { err(t.error || new Error('迁移事务被中止')); };
+        var g = t.objectStore('clipdata').get(m.name);
+        g.onsuccess = function () {
+          var d = g.result;
+          if (!d) { ok(false); return; }
+          try {
+            t.objectStore('profileClips').put({
+              profileId: pid, name: m.name, type: m.type || 'once', duration: m.duration || 0,
+              hash: m.hash || '', skeletonHash: pid === PENDING_PID ? '' : (m.skeletonHash || ''),
+              enc: m.enc, sizeRaw: m.sizeRaw || 0, sizeEnc: m.sizeEnc || 0, updatedAt: m.updatedAt || Date.now()
+            });
+            t.objectStore('profileClipData').put({ profileId: pid, name: m.name, data: d.data });
+            t.objectStore('clips').delete(m.name);
+            t.objectStore('clipdata').delete(m.name);
+          } catch (e) { try { t.abort(); } catch (e2) {} return; }
+          t.oncomplete = function () { ok(true); };
+        };
+        g.onerror = function () { err(g.error || new Error('迁移读取失败')); };
+      });
+    });
+  }
+
+  async function loadProfiles() {
+    await ensureProfiles();
+    var all = await tx(['meta'], 'readonly').then(function (t) { return reqDone(t.objectStore('meta').getAll()); });
+    var list = (all || []).filter(function (r) { return r && r.id && String(r.id).indexOf('profile:') === 0; })
+      .map(function (r) { return r.data; })
+      .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+    // LIB-2：存量"有骨架原文但指纹为空"的档案（老版本程序落库的）读到这里按原文回填并落库，
+    // 导出/preflight/动作对号全拿真实指纹；防篡改不受影响（录了指纹且对不上照旧拒绝）
+    var dirty = [];
+    for (var hi = 0; hi < list.length; hi++) {
+      var hp = list[hi];
+      if (hp.skeleton && !hp.skeletonHash) {
+        var hh = await hashObject(hp.skeleton);
+        if (hh) { hp.skeletonHash = hh; dirty.push({ store: 'meta', value: { id: profKey(hp.id), data: hp } }); }
+      }
+    }
+    if (dirty.length) { try { await putManyAtomic(dirty); } catch (e) { /* 回填失败无害：下次读取再试 */ } }
+    var act = (all || []).filter(function (r) { return r && r.id === 'activeProfile'; })[0] || null;
+    var activeId = act ? act.pid : (list.length ? list[0].id : null);
+    if (!act && list.length) { // 指针丢了（如清空到一半）：修复到第一个档案
+      putOne('meta', { id: 'activeProfile', pid: activeId }).catch(function () {});
+    }
+    return { list: list, activeId: activeId };
+  }
+
+  // 对外：档案列表（不含骨架原文，含模型文件占用）。isActive 标出当前档案
+  async function listProfiles() {
+    var lp = await loadProfiles();
+    var rows = await tx(['files'], 'readonly').then(function (t) { return reqDone(t.objectStore('files').getAll()); });
+    var sizeOf = {};
+    (rows || []).forEach(function (f) {
+      if (String(f.name).indexOf('pfile:') !== 0) return;
+      var pid = String(f.name).split(':')[1];
+      sizeOf[pid] = (sizeOf[pid] || 0) + (f.size || 0);
+    });
+    return lp.list.map(function (p) {
+      return {
+        id: p.id, name: p.name, createdAt: p.createdAt, updatedAt: p.updatedAt,
+        skeletonHash: p.skeletonHash || '', boneCount: p.boneCount || 0, hasSkeleton: !!p.skeleton,
+        modelNames: (p.modelNames || []).slice(), modelSize: sizeOf[p.id] || 0,
+        isActive: p.id === lp.activeId
+      };
+    });
+  }
+
+  async function getActiveProfile() {
+    var lp = await loadProfiles();
+    if (!lp.activeId) return null;
+    for (var i = 0; i < lp.list.length; i++) if (lp.list[i].id === lp.activeId) return lp.list[i];
+    return null;
+  }
+
+  function setActiveProfile(pid) {
+    return loadProfiles().then(function (lp) {
+      var hit = lp.list.some(function (p) { return p.id === pid; });
+      if (!hit) return Promise.reject(new Error('档案不存在：' + pid));
+      return putOne('meta', { id: 'activeProfile', pid: pid });
+    });
+  }
+
+  // 建档案。opts = { name, skeleton, files:[{name,blob}] }；骨架原文内联进档案记录，
+  // 模型文件进 files 仓（带 SHA-256 指纹）。骨架和文件同一事务提交
+  async function createProfile(opts) {
+    opts = opts || {};
+    await ensureProfiles();
+    var pid = newPid();
+    var skeleton = opts.skeleton || null;
+    var hash = skeleton ? await hashObject(skeleton) : '';
+    var ops = [];
+    for (var i = 0; i < (opts.files || []).length; i++) {
+      var f = opts.files[i];
+      if (!f || !f.name || !f.blob) continue;
+      var buf = await f.blob.arrayBuffer().catch(function () { return new ArrayBuffer(0); });
+      var fh = buf.byteLength ? await sha256Hex(new Uint8Array(buf)) : '';
+      ops.push({ store: 'files', value: { name: pfileKey(pid, f.name), mime: f.blob.type || 'application/octet-stream', size: f.blob.size, data: f.blob, hash: fh, updatedAt: Date.now() } });
+    }
+    ops.push({
+      store: 'meta', value: {
+        id: profKey(pid), data: {
+          id: pid, name: (opts.name || '角色') + '', createdAt: Date.now(), updatedAt: Date.now(),
+          skeletonHash: hash, boneCount: skeleton ? (skeleton.count || 0) : 0,
+          skeleton: skeleton, modelNames: (opts.files || []).map(function (f) { return f.name; })
+        }
+      }
+    });
+    await putManyAtomic(ops);
+    var lp2 = await loadProfiles();
+    if (!lp2.activeId) await setActiveProfile(pid).catch(function () {}); // 第一套档案自动成为活动档案
+    var out = null;
+    lp2.list.forEach(function (p) { if (p.id === pid) out = p; });
+    return out;
+  }
+
+  function renameProfile(pid, name) {
+    return loadProfiles().then(function (lp) {
+      var p = null;
+      lp.list.forEach(function (x) { if (x.id === pid) p = x; });
+      if (!p) return Promise.reject(new Error('档案不存在：' + pid));
+      p.name = (name || '').trim() || p.name;
+      p.updatedAt = Date.now();
+      return putOne('meta', { id: profKey(pid), data: p });
+    });
+  }
+
+  function deleteProfile(pid) {
+    return (async function () {
+      var lp = await loadProfiles();
+      var hit = lp.list.some(function (p) { return p.id === pid; });
+      if (!hit) return Promise.reject(new Error('档案不存在：' + pid));
+      var keys = await tx(['files'], 'readonly').then(function (t) { return reqDone(t.objectStore('files').getAllKeys()); });
+      var t = await tx(['meta', 'files'], 'readwrite');
+      t.objectStore('meta').delete(profKey(pid));
+      (keys || []).forEach(function (k) { if (String(k).indexOf('pfile:' + pid + ':') === 0) t.objectStore('files').delete(k); });
+      if (lp.activeId === pid) {
+        var next = null;
+        lp.list.forEach(function (p) { if (p.id !== pid && !next) next = p.id; });
+        if (next) t.objectStore('meta').put({ id: 'activeProfile', pid: next });
+        else t.objectStore('meta').delete('activeProfile');
+      }
+      await txDone(t);
+      return true;
+    })();
+  }
+
+  // 档案作用域的模型文件读写（预览/导入共用；写入顺手更新档案的 modelNames 清单）
+  function getProfileFile(pid, name) {
+    return getOne('files', pfileKey(pid, name)).then(function (rec) { return rec ? rec.data : null; });
+  }
+
+  // 带元数据版（FIX-D/AUD2-009）：预览加载档案模型前用 hash 验完整性
+  function getProfileFileInfo(pid, name) {
+    return getOne('files', pfileKey(pid, name)).then(function (rec) {
+      return rec ? { data: rec.data, hash: rec.hash || '', mime: rec.mime || '', size: rec.size || 0 } : null;
+    });
+  }
+
+  // 档案作用域的模型文件写入：单事务内"读档案→更新 modelNames→写文件+档案"，
+  // gltf/bin 两个文件并发回写也不会互相覆盖清单（2026-08-30 实测抓到的竞态）
+  function putProfileFile(pid, name, blob) {
+    if (!name || !blob) return Promise.reject(new Error('模型文件名或内容为空'));
+    return blob.arrayBuffer().catch(function () { return new ArrayBuffer(0); }).then(function (buf) {
+      return sha256Hex(buf.byteLength ? new Uint8Array(buf) : new Uint8Array(0));
+    }).then(function (hash) {
+      return tx(['files', 'meta'], 'readwrite').then(function (t) {
+        return new Promise(function (ok, err) {
+          t.onabort = function () { err(t.error || new Error('资料库事务被中止，本次写入没有保存')); };
+          var getReq = t.objectStore('meta').get(profKey(pid));
+          getReq.onerror = function () { err(getReq.error || new Error('资料库读取失败')); };
+          getReq.onsuccess = function () {
+            var p = getReq.result && getReq.result.data;
+            if (!p) { try { t.abort(); } catch (e2) {} return; }
+            if ((p.modelNames || []).indexOf(name) < 0) { p.modelNames = (p.modelNames || []).concat([name]); p.updatedAt = Date.now(); }
+            try {
+              t.objectStore('files').put({ name: pfileKey(pid, name), mime: blob.type || 'application/octet-stream', size: blob.size, data: blob, hash: hash, updatedAt: Date.now() });
+              t.objectStore('meta').put({ id: profKey(pid), data: p });
+            } catch (e) { try { t.abort(); } catch (e2) {} return; }
+            t.oncomplete = function () { ok(); };
+          };
+        });
+      });
+    });
+  }
+
+  // ============ 骨架 / 目录 / 模型文件（旧 API：现在都指向"活动档案"） ============
+
+  function getSkeleton() {
+    return getActiveProfile().then(function (p) { return p && p.skeleton ? p.skeleton : null; });
+  }
+
+  // 旧语义"把在线骨架存进来"现在=自动对号：已有同骨架的档案就用它（没活动指针时指过去），
+  // 没有就建新档案并切过去。返回 {id, matched}。preview3d 的建档/切换走更细的新 API，
+  // 这里主要服务备份导入和旧调用点
+  async function putSkeleton(skel) {
+    if (!skel || !skel.bones || !skel.count) return Promise.reject(new Error('骨架数据不完整，没有存'));
+    var hash = await hashObject(skel);
+    var lp = await loadProfiles();
+    var match = null;
+    lp.list.forEach(function (p) { if (!match && p.skeletonHash === hash) match = p; });
+    if (match) {
+      match.skeleton = skel; match.skeletonHash = hash; match.boneCount = skel.count; match.updatedAt = Date.now();
+      await putOne('meta', { id: profKey(match.id), data: match });
+      if (!lp.activeId) await setActiveProfile(match.id).catch(function () {});
+      return { id: match.id, matched: true };
+    }
+    var np = await createProfile({ name: '角色 ' + (lp.list.length + 1), skeleton: skel });
+    await setActiveProfile(np.id).catch(function () {});
+    return { id: np.id, matched: false };
+  }
+
+  function getSkeletonInfo() {
+    return getActiveProfile().then(function (p) {
+      return p && p.skeleton ? { hash: p.skeletonHash || '', boneCount: p.boneCount || (p.skeleton.count || 0), updatedAt: p.updatedAt } : null;
+    });
+  }
+
+  function getCatalog() {
+    return getOne('meta', 'catalog').then(function (rec) { return rec ? rec.data : null; });
+  }
+
+  function putCatalog(cat) {
+    if (!cat || !cat.emotes || !cat.emotes.length) return Promise.resolve(false);
+    return putOne('meta', { id: 'catalog', data: cat, updatedAt: Date.now() }).then(function () { return true; });
+  }
+
+  // 旧 API：模型文件读写指向"活动档案"的命名空间（没有活动档案时自动建一个空档案兜底）
+  async function activePidOrNew() {
+    var p = await getActiveProfile();
+    if (p) return p.id;
+    var np = await createProfile({ name: '默认角色' });
+    return np.id;
+  }
+
+  function putModelFile(name, blob) {
+    return activePidOrNew().then(function (pid) { return putProfileFile(pid, name, blob); });
+  }
+
+  function getModelFile(name) {
+    return getActiveProfile().then(function (p) { return p ? getProfileFile(p.id, name) : Promise.resolve(null); });
+  }
+
+  function getModelFiles() {
+    return getActiveProfile().then(function (p) {
+      if (!p) return Promise.resolve([]);
+      var prefix = 'pfile:' + p.id + ':';
+      return tx(['files'], 'readonly').then(function (t) { return reqDone(t.objectStore('files').getAll()); })
+        .then(function (rows) {
+          return (rows || []).filter(function (r) { return String(r.name).indexOf(prefix) === 0; })
+            .map(function (r) { return { name: String(r.name).slice(prefix.length), size: r.size, hash: r.hash || '', updatedAt: r.updatedAt }; })
+            .sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+        });
+    });
+  }
+
+  function deleteModelFiles() {
+    return (async function () {
+      var p = await getActiveProfile();
+      if (!p) return false;
+      var prefix = 'pfile:' + p.id + ':';
+      var keys = await tx(['files'], 'readonly').then(function (t) { return reqDone(t.objectStore('files').getAllKeys()); });
+      var t = await tx(['files', 'meta'], 'readwrite');
+      (keys || []).forEach(function (k) { if (String(k).indexOf(prefix) === 0) t.objectStore('files').delete(k); });
+      p.modelNames = []; p.updatedAt = Date.now();
+      t.objectStore('meta').put({ id: profKey(p.id), data: p });
+      await txDone(t);
+      return true;
+    })();
+  }
+
+  // ============ 动作 clip（FIX-D/AUD2-008：按角色档案隔离） ============
+  // 动作身份 = (profileId, 动作名)。所有 API 的 pid 参数省略时解析为当前活动档案
+  // （旧调用点零改动）；读 API 在没有活动档案时返回空/不建档，写 API 会自动建
+  // 「默认角色」兜底（老行为）。写入时把"目标档案"的骨架指纹盖在元数据上。
+
+  // 存原始 clip JSON（录制文件原样），用参考骨架补齐发生在 preview3d 注册时——
+  // 这样换了骨架以后库里的动作还能按新骨架重新补齐，不会把补齐结果焊死在数据里
+  async function putClip(name, clipObj, pid) {
+    if (!name || !clipObj || !clipObj.bones) return Promise.reject(new Error('动作数据不完整：' + name));
+    await ensureClips();
+    var target = pid || await activePidOrNew();
+    var u8 = canonBytes(clipObj);
+    var hash = await sha256Hex(u8);
+    var gz = await gzipBytes(u8);
+    var prof = await getOne('meta', profKey(target));
+    var p = prof && prof.data;
+    // FIX-4/AUD-013 惯例：写入时把"目标档案的骨架指纹"盖在动作元数据上（clip↔骨架绑定），
+    // 体检拿它发现"动作是在别的角色外形下录的"。档案没骨架时留空——不误报
+    var stamp = p && p.skeleton ? (p.skeletonHash || '') : '';
+    // AUD-004：元数据和数据同一个事务提交（atomic），不会再出现"索引里有、内容读不出"的半条
+    await putManyAtomic([
+      {
+        store: 'profileClips',
+        value: {
+          profileId: target, name: name, type: clipObj.type || 'once', duration: clipObj.duration || 0,
+          hash: hash, skeletonHash: stamp, enc: gz.enc, sizeRaw: u8.length, sizeEnc: gz.blob.size, updatedAt: Date.now()
+        }
+      },
+      { store: 'profileClipData', value: { profileId: target, name: name, data: gz.blob } }
+    ]);
+    return { name: name, sizeEnc: gz.blob.size, sizeRaw: u8.length, enc: gz.enc };
+  }
+
+  async function getClip(name, pid) {
+    try {
+      await ensureClips();
+      var p = pid || null;
+      if (!p) { var act = await getActiveProfile(); p = act ? act.id : null; }
+      if (!p) return null;
+      var r = await Promise.all([getOne('profileClips', [p, name]), getOne('profileClipData', [p, name])]);
+      var meta = r[0], data = r[1];
+      if (!meta || !data) return null;
+      var txt = await gunzipToText(data.data, meta.enc);
+      try { return JSON.parse(txt); } catch (e) { return null; }
+    } catch (e) { return null; }
+  }
+
+  async function deleteClip(name, pid) {
+    await ensureClips();
+    var p = pid || null;
+    if (!p) { var act = await getActiveProfile(); p = act ? act.id : null; }
+    if (!p) return false;
+    await tx(['profileClips', 'profileClipData'], 'readwrite').then(function (t) {
+      t.objectStore('profileClips').delete([p, name]);
+      return reqDone(t.objectStore('profileClipData').delete([p, name]));
+    });
+    return true;
+  }
+
+  // 某个档案（缺省=活动档案）的动作索引。体检缺录/健康检查/预览缓存全都走这里，
+  // 天然就是"当前档案"口径
+  async function clipIndex(pid) {
+    await ensureClips();
+    var p = pid || null;
+    if (!p) { var act = await getActiveProfile(); p = act ? act.id : null; }
+    if (!p) return [];
+    var rows = await tx(['profileClips'], 'readonly').then(function (t) { return reqDone(t.objectStore('profileClips').getAll()); });
+    return (rows || [])
+      .filter(function (r) { return r.profileId === p; })
+      .map(function (r) {
+        return { name: r.name, type: r.type, duration: r.duration, hash: r.hash, skeletonHash: r.skeletonHash || '', enc: r.enc, sizeRaw: r.sizeRaw, sizeEnc: r.sizeEnc, updatedAt: r.updatedAt };
+      })
+      .sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+  }
+
+  // 「待归档动作」索引：旧数据迁移/备份导入时归属不明的动作都在这里，
+  // 等主人在资料库窗口选档案认领
+  function pendingClipIndex() { return clipIndex(PENDING_PID); }
+
+  // 把待归档动作认领到某套档案：归属写入 + 盖上该档案的骨架指纹，单条一个原子事务。
+  // 返回实际归档的动作名列表
+  async function assignPendingClips(names, pid) {
+    if (!names || !names.length) return [];
+    if (!pid || pid === PENDING_PID) throw new Error('请先选择要归档到的角色档案');
+    await ensureClips();
+    var prof = await getOne('meta', profKey(pid));
+    var p = prof && prof.data;
+    if (!p) throw new Error('档案不存在：' + pid);
+    var stamp = p.skeleton ? (p.skeletonHash || '') : '';
+    var moved = [];
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      var done = await tx(['profileClips', 'profileClipData'], 'readwrite').then(function (t) {
+        return new Promise(function (ok, err) {
+          t.onabort = function () { err(t.error || new Error('归档事务被中止')); };
+          var gm = t.objectStore('profileClips').get([PENDING_PID, name]);
+          gm.onsuccess = function () {
+            var gd = t.objectStore('profileClipData').get([PENDING_PID, name]);
+            gd.onsuccess = function () {
+              if (!gm.result || !gd.result) { ok(false); return; }
+              try {
+                var m = gm.result;
+                t.objectStore('profileClips').put({
+                  profileId: pid, name: name, type: m.type, duration: m.duration, hash: m.hash,
+                  skeletonHash: stamp, enc: m.enc, sizeRaw: m.sizeRaw, sizeEnc: m.sizeEnc, updatedAt: Date.now()
+                });
+                t.objectStore('profileClipData').put({ profileId: pid, name: name, data: gd.result.data });
+                t.objectStore('profileClips').delete([PENDING_PID, name]);
+                t.objectStore('profileClipData').delete([PENDING_PID, name]);
+              } catch (e) { try { t.abort(); } catch (e2) {} return; }
+              t.oncomplete = function () { ok(true); };
+            };
+            gd.onerror = function () { err(gd.error || new Error('归档读取失败')); };
+          };
+          gm.onerror = function () { err(gm.error || new Error('归档读取失败')); };
+        });
+      });
+      if (done) moved.push(name);
+    }
+    return moved;
+  }
+
+  function hasClips(names, pid) {
+    return clipIndex(pid).then(function (idx) {
+      var set = {};
+      idx.forEach(function (c) { set[c.name] = true; });
+      return names.map(function (n) { return !!set[n]; });
+    });
+  }
+
+  // ============ 资料档 / 统计 ============
+
+  function stats() {
+    return ensureClips().then(function () {
+      return Promise.all([
+        clipIndex(),
+        getActiveProfile(),
+        getOne('meta', 'catalog'),
+        listProfiles(),
+        pendingClipIndex()
+      ]);
+    }).then(async function (r) {
+      var idx = r[0], p = r[1], cat = r[2], profs = r[3] || [], pend = r[4] || [];
+      var sizeEnc = 0, sizeRaw = 0;
+      idx.forEach(function (c) { sizeEnc += c.sizeEnc || 0; sizeRaw += c.sizeRaw || 0; });
+      var modelSize = 0, modelNames = [];
+      if (p) profs.forEach(function (x) { if (x.id === p.id) { modelSize = x.modelSize; modelNames = x.modelNames; } });
+      return {
+        idbAvailable: available(),
+        gzip: canGzip(),
+        clips: idx.length,
+        pendingClips: pend.length,
+        sizeEnc: sizeEnc, sizeRaw: sizeRaw,
+        skeleton: !!(p && p.skeleton), skeletonHash: p ? (p.skeletonHash || '') : '', boneCount: p ? (p.boneCount || 0) : 0,
+        catalog: !!cat,
+        modelFiles: modelNames,
+        modelSize: modelSize,
+        profileCount: profs.length,
+        profiles: profs.map(function (x) {
+          return { id: x.id, name: x.name, boneCount: x.boneCount, hasSkeleton: x.hasSkeleton, modelNames: x.modelNames, modelSize: x.modelSize, isActive: x.isActive };
+        }),
+        profile: p ? {
+          id: p.id, name: p.name, skeletonHash: p.skeletonHash || '',
+          boneCount: p.boneCount || 0, createdAt: p.createdAt, updatedAt: p.updatedAt
+        } : null
+      };
+    });
+  }
+
+  function clear() {
+    return tx(['meta', 'clips', 'clipdata', 'files', 'profileClips', 'profileClipData'], 'readwrite').then(function (t) {
+      var stores = ['meta', 'clips', 'clipdata', 'files', 'profileClips', 'profileClipData'];
+      var ps = stores.map(function (s) { return reqDone(t.objectStore(s).clear()); });
+      return Promise.all(ps);
+    });
+  }
+
+  // ============ 备份：导出 / 导入 ============
+
+  function u32le(v) {
+    return new Uint8Array([v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255]);
+  }
+
+  // 导出整个资料库（全部角色档案 + 目录 + 全部动作 + 模型文件）成一个 CHLB 文件。
+  // 骨架/目录是十几~几百 KB 的小东西直接内嵌原文，让备份自包含（能搬到别的电脑）；
+  // 动作和模型全程只搬运 Blob 引用，不把上百 MB 读进内存。
+  // v2（FIX-D/AUD2-009）：每条动作带 profileId/skeletonHash（逐动作归属），每个模型文件
+  // 带内容 hash；待归档动作也导出（profileId='__pending__'，导入后仍是待归档）。
+  // 兼容：header.skeleton 仍写"活动档案"的骨架（老版本程序导入新备份能拿到主骨架），
+  // header.profiles 是档案完整清单
+  async function exportBundle(onProgress) {
+    await ensureClips();
+    var lp = await loadProfiles();
+    var active = null;
+    lp.list.forEach(function (p) { if (p.id === lp.activeId) active = p; });
+    return Promise.all([
+      getOne('meta', 'catalog'),
+      tx(['profileClips'], 'readonly').then(function (t) { return reqDone(t.objectStore('profileClips').getAll()); }),
+      tx(['profileClipData'], 'readonly').then(function (t) { return reqDone(t.objectStore('profileClipData').getAll()); }),
+      tx(['files'], 'readonly').then(function (t) { return reqDone(t.objectStore('files').getAll()); })
+    ]).then(function (r) {
+      var catRec = r[0], clipRows = r[1] || [], dataRows = r[2] || [], fileRows = r[3] || [];
+      var dataByKey = {};
+      dataRows.forEach(function (d) { dataByKey[d.profileId + '\u0000' + d.name] = d.data; });
+      var parts = [];   // [{kind:'skel'|'pskel'|'catalog'|'clip'|'file', name, blob, meta}]
+      if (active && active.skeleton) parts.push({ kind: 'skel', name: 'skeleton.json', blob: new Blob([canonBytes(active.skeleton)]), meta: { hash: active.skeletonHash, boneCount: active.boneCount } });
+      lp.list.forEach(function (p) {
+        if (p.skeleton) parts.push({ kind: 'pskel', name: 'profile-' + p.id + '.json', blob: new Blob([canonBytes(p.skeleton)]), meta: { pid: p.id, pname: p.name, hash: p.skeletonHash, boneCount: p.boneCount } });
+      });
+      if (catRec) parts.push({ kind: 'catalog', name: 'catalog.json', blob: new Blob([canonBytes(catRec.data)]), meta: catRec });
+      clipRows.forEach(function (m) {
+        var data = dataByKey[m.profileId + '\u0000' + m.name];
+        if (data) parts.push({ kind: 'clip', name: m.name, blob: data, meta: m });
+      });
+      fileRows.forEach(function (f) { parts.push({ kind: 'file', name: f.name, blob: f.data, meta: f }); });
+
+      // 头部偏移要用「补空格对齐 64 字节」的固定长度算，保证一遍就稳定
+      var headerLen = 64, header, i;
+      for (i = 0; i < 8; i++) {
+        header = buildHeader(parts, headerLen);
+        var need = new TextEncoder().encode(JSON.stringify(header)).length;
+        if (need <= headerLen) break;
+        headerLen = Math.ceil((need + 1) / 64) * 64;
+      }
+      var headerBytes = new TextEncoder().encode(JSON.stringify(header));
+      var pad = new Uint8Array(headerLen - headerBytes.length);
+      for (i = 0; i < pad.length; i++) pad[i] = 0x20;
+      var head = new Uint8Array(12);
+      head.set(BUNDLE_MAGIC, 0);
+      head.set(u32le(BUNDLE_VERSION), 4);
+      head.set(u32le(headerLen), 8);
+
+      var blobParts = [head, headerBytes, pad];
+      parts.forEach(function (p) { blobParts.push(p.blob); });
+      if (onProgress) onProgress({ phase: 'done', clips: parts.filter(function (p) { return p.kind === 'clip'; }).length });
+      return new Blob(blobParts, { type: 'application/octet-stream' });
+    });
+  }
+
+  function buildHeader(parts, headerLen) {
+    var off = 12 + headerLen;
+    var skelEntry = null, catEntry = null, clipEntries = [], fileEntries = [], profEntries = [];
+    parts.forEach(function (p) {
+      var entry = { name: p.name, offset: off, len: p.blob.size };
+      if (p.kind === 'clip') {
+        entry.profileId = p.meta.profileId;             // v2：逐动作归属
+        entry.skeletonHash = p.meta.skeletonHash || ''; // v2：录制时的骨架指纹
+        entry.enc = p.meta.enc; entry.hash = p.meta.hash; entry.sizeRaw = p.meta.sizeRaw;
+        entry.type = p.meta.type; entry.duration = p.meta.duration; entry.updatedAt = p.meta.updatedAt;
+        clipEntries.push(entry);
+      } else if (p.kind === 'file') {
+        entry.profileId = String(p.meta.name).match(/^pfile:([^:]+):/) ? String(p.meta.name).split(':')[1] : '';
+        entry.mime = p.meta.mime; entry.hash = p.meta.hash || ''; entry.updatedAt = p.meta.updatedAt; // v2：文件内容 hash
+        fileEntries.push(entry);
+      } else if (p.kind === 'skel') {
+        entry.hash = p.meta.hash || ''; entry.boneCount = p.meta.boneCount || 0;
+        skelEntry = entry;
+      } else if (p.kind === 'pskel') {
+        entry.hash = p.meta.hash || ''; entry.boneCount = p.meta.boneCount || 0;
+        profEntries.push({ id: p.meta.pid, name: p.meta.pname, skeletonHash: p.meta.hash || '', boneCount: p.meta.boneCount || 0, skeleton: entry });
+      } else if (p.kind === 'catalog') {
+        catEntry = entry;
+      }
+      off += p.blob.size;
+    });
+    var h = {
+      formatVersion: BUNDLE_VERSION, schemaVersion: SCHEMA_VERSION, createdAt: Date.now(),
+      clips: clipEntries, files: fileEntries
+    };
+    if (skelEntry) { h.skeleton = { hash: skelEntry.hash, boneCount: skelEntry.boneCount, offset: skelEntry.offset, len: skelEntry.len }; }
+    if (catEntry) { h.catalog = { offset: catEntry.offset, len: catEntry.len }; }
+    if (profEntries.length) {
+      h.profiles = profEntries.map(function (p) {
+        return { id: p.id, name: p.name, skeletonHash: p.skeletonHash, boneCount: p.boneCount, skeleton: { offset: p.skeleton.offset, len: p.skeleton.len } };
+      });
+    }
+    return h;
+  }
+
+  // AUD-004：备份里的一条动作写入前过三关——解压、JSON 结构（必须有 bones）、SHA-256 与头内 hash 比对。
+  // 头里没 hash（老备份）就用现算的，照样写；hash 对不上直接抛错，那条不进库
+  function verifyClipBlob(blob, e) {
+    return gunzipToText(blob, e.enc).then(function (txt) {
+      var clip;
+      try { clip = JSON.parse(txt); } catch (err) { throw new Error('动作数据损坏（解压后不是有效 JSON）'); }
+      if (!clip || !clip.bones) throw new Error('动作数据缺 bones 字段（结构不对）');
+      var u8 = canonBytes(clip);
+      return sha256Hex(u8).then(function (h) {
+        if (e.hash && h !== e.hash) throw new Error('哈希校验不符（内容与备份清单对不上，文件可能损坏）');
+        return { hash: e.hash || h, sizeRaw: e.sizeRaw || u8.length };
+      });
+    });
+  }
+
+  // v2 preflight：全包数据在写库前全部验证——每条动作解压+结构+hash、每个模型文件 hash、
+  // 每套档案骨架原文与头内指纹一致、gltf 引用的外部 bin 必须同档案自带。
+  // 任何一项不过就抛错：整个导入拒绝，现有资料库一个字节都不动
+  async function preflightV2(file, header) {
+    for (var pi = 0; pi < (header.profiles || []).length; pi++) {
+      var bp = header.profiles[pi];
+      if (!bp.skeleton || bp.skeleton.offset === undefined) continue;
+      var txt = await file.slice(bp.skeleton.offset, bp.skeleton.offset + bp.skeleton.len).text();
+      var skel;
+      try { skel = JSON.parse(txt); } catch (e) { throw new Error('档案「' + (bp.name || bp.id) + '」的骨架数据损坏'); }
+      var h = await hashObject(skel);
+      // LIB-2：老版本程序导出的备份头里可能没录档案指纹（空）——没有可比对的指纹就按原文放行
+      // （导入时会按内容算出真指纹建档），只有"录了指纹且对不上"才算篡改
+      if (bp.skeletonHash && h !== bp.skeletonHash) throw new Error('档案「' + (bp.name || bp.id) + '」的骨架指纹与内容对不上（备份可能被篡改）');
+    }
+    for (var ci = 0; ci < (header.clips || []).length; ci++) {
+      var e = header.clips[ci];
+      try {
+        await verifyClipBlob(file.slice(e.offset, e.offset + e.len), e);
+      } catch (err) {
+        throw new Error('动作「' + e.name + '」' + ((err && err.message) || '校验失败'));
+      }
+    }
+    var filesByPid = {};
+    (header.files || []).forEach(function (f) {
+      var m = String(f.name).match(/^pfile:([^:]+):(.+)$/);
+      var pid = (f.profileId || (m && m[1]) || '_bare_');
+      var fn = m ? m[2] : f.name;
+      (filesByPid[pid] = filesByPid[pid] || []).push({ entry: f, fname: fn });
+    });
+    for (var pid in filesByPid) {
+      var group = filesByPid[pid];
+      for (var i = 0; i < group.length; i++) {
+        var g = group[i];
+        if (g.entry.hash) {
+          var buf = new Uint8Array(await file.slice(g.entry.offset, g.entry.offset + g.entry.len).arrayBuffer());
+          var fh = await sha256Hex(buf);
+          if (!fh || fh !== g.entry.hash) throw new Error('模型文件「' + g.fname + '」内容与备份清单对不上（文件可能损坏）');
+        }
+      }
+      // gltf 引用的外部 buffer 必须能在同一档案内解析（典型：model.gltf ↔ model.bin 成套）
+      var names = {};
+      group.forEach(function (g2) { names[g2.fname] = true; });
+      for (var j = 0; j < group.length; j++) {
+        var gj = group[j];
+        if (!/\.gltf$/i.test(gj.fname)) continue;
+        var jtxt;
+        try { jtxt = await file.slice(gj.entry.offset, gj.entry.offset + gj.entry.len).text(); } catch (e3) { continue; }
+        var doc;
+        try { doc = JSON.parse(jtxt); } catch (e4) { throw new Error('模型文件「' + gj.fname + '」不是有效 glTF'); }
+        (doc && doc.buffers || []).forEach(function (b) {
+          var uri = (b && b.uri) || '';
+          if (!uri || uri.indexOf('data:') === 0) return;
+          var base = String(uri).split('/').pop().split('?')[0];
+          if (!names[base]) throw new Error('档案内「' + gj.fname + '」引用的外部文件「' + base + '」不在备份里（模型不成套）');
+        });
+      }
+    }
+    // LIB-3：目录段也要在写库前解析+形状检查——旧代码里坏目录会拖到"档案/动作都写完了"
+    // 才在导入链里炸出来，且错误被当成动作/导入失败报出去。这里先验，不过就整体拒绝
+    if (header.catalog && header.catalog.offset !== undefined) {
+      var catTxt = await file.slice(header.catalog.offset, header.catalog.offset + header.catalog.len).text();
+      var cat;
+      try { cat = JSON.parse(catTxt); } catch (e) { throw new Error('目录数据损坏（备份里的目录段不是有效 JSON）'); }
+      if (!cat || typeof cat !== 'object' || Array.isArray(cat) || !Array.isArray(cat.emotes)) {
+        throw new Error('目录数据结构不对（缺 emotes 表情清单）');
+      }
+    }
+  }
+
+  // 导入备份：先验魔数/版本/长度/数据段越界（v2 再做全包 preflight），全部合格才开始写；
+  // 写的过程逐条汇报进度。拒绝时一个字节都不写，现有资料库原样不动。
+  // 档案口径（FIX-D/AUD2-009）：
+  //   v2 —— 每条动作按头内 profileId 对号（备份档案→本机档案映射）；
+  //         对不上号的按动作自身 skeletonHash 唯一匹配本机档案，再不行进待归档
+  //   v1 —— 只读兼容：备份里只有一套档案 → 动作归入它；多套 → 动作进待归档（绝不统一盖某副骨架）
+  async function importBundle(file, opts) {
+    opts = opts || {};
+    if (!file) return Promise.reject(new Error('没有选择备份文件'));
+    var header = await file.slice(0, 12).arrayBuffer().then(function (headBuf) {
+      var head = new Uint8Array(headBuf);
+      if (head.length < 12 || head[0] !== 0x43 || head[1] !== 0x48 || head[2] !== 0x4C || head[3] !== 0x42) {
+        throw new Error('这不是编舞资料库备份文件（文件头不对）');
+      }
+      var dv = new DataView(headBuf);
+      var ver = dv.getUint32(4, true);
+      if (ver !== 1 && ver !== BUNDLE_VERSION) throw new Error('备份格式版本不支持（文件 v' + ver + '，本程序支持 v1/' + BUNDLE_VERSION + '）');
+      var headerLen = dv.getUint32(8, true);
+      if (headerLen <= 0 || 12 + headerLen > file.size) throw new Error('备份文件不完整（头部长度对不上）');
+      return file.slice(12, 12 + headerLen).text().then(function (t) { return { h: JSON.parse(t), ver: ver }; });
+    }).then(function (parsed) {
+      var h = parsed.h;
+      if (!h || typeof h !== 'object') throw new Error('备份头部读不出来（文件可能损坏）');
+      // 每段数据的落点都要在文件范围内
+      var entries = (h.clips || []).concat(h.files || []);
+      if (h.skeleton && h.skeleton.offset !== undefined) entries.push({ name: 'skeleton.json', offset: h.skeleton.offset, len: h.skeleton.len });
+      if (h.catalog && h.catalog.offset !== undefined) entries.push({ name: 'catalog.json', offset: h.catalog.offset, len: h.catalog.len });
+      (h.profiles || []).forEach(function (p) {
+        if (p.skeleton && p.skeleton.offset !== undefined) entries.push({ name: 'profile-' + p.id + '.json', offset: p.skeleton.offset, len: p.skeleton.len });
+      });
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        if (typeof e.offset !== 'number' || typeof e.len !== 'number' || e.offset < 0 || e.len < 0 || e.offset + e.len > file.size) {
+          throw new Error('备份文件不完整（「' + e.name + '」的数据段越界）');
+        }
+      }
+      h.__bundleVersion = parsed.ver;
+      return h;
+    });
+
+    // v2：全包 preflight（先验后写，坏包零写入）
+    if (header.__bundleVersion >= 2) await preflightV2(file, header);
+
+    // 规划档案：备份里每套骨架 → 本机同指纹档案（并入）或新建档案
+    var lp = await loadProfiles();
+    var hadActive = !!lp.activeId;
+    var pidMap = {};        // 备份档案 id → 本机档案 id
+    var legacyTarget = null; // 老备份（无 header.profiles）的骨架归属档案 id
+    var createdProfiles = 0;
+
+    async function ensureProfileFor(skel, name) {
+      var hash = await hashObject(skel);
+      var hit = null;
+      lp.list.forEach(function (p) { if (!hit && p.skeletonHash === hash) hit = p; });
+      if (hit) {
+        if (!hit.skeleton) { // 本机有指纹记录但缺骨架原文（理论少见）：补上
+          hit.skeleton = skel; hit.boneCount = skel.count || hit.boneCount; hit.updatedAt = Date.now();
+          await putOne('meta', { id: profKey(hit.id), data: hit });
+        }
+        return { id: hit.id, created: false };
+      }
+      var np = await createProfile({ name: name || ('角色 ' + (lp.list.length + 1 + createdProfiles)), skeleton: skel });
+      createdProfiles++;
+      lp.list.push({ id: np.id, skeletonHash: np.skeletonHash, skeleton: skel, name: np.name });
+      return { id: np.id, created: true };
+    }
+
+    if (header.profiles && header.profiles.length) {
+      for (var pi = 0; pi < header.profiles.length; pi++) {
+        var bp = header.profiles[pi];
+        var skel = null;
+        if (bp.skeleton && bp.skeleton.offset !== undefined) {
+          var txt = await file.slice(bp.skeleton.offset, bp.skeleton.offset + bp.skeleton.len).text();
+          skel = JSON.parse(txt); // v2 已 preflight 验过指纹；v1 损坏会在写入前被 ensureProfileFor 对号失败拦住
+        }
+        if (!skel) continue; // 没有骨架的空档案不导（无意义）
+        var r = await ensureProfileFor(skel, bp.name);
+        pidMap[bp.id] = r.id;
+        if (!legacyTarget) legacyTarget = r.id;
+      }
+    } else if (header.skeleton && header.skeleton.offset !== undefined) {
+      var skelTxt = await file.slice(header.skeleton.offset, header.skeleton.offset + header.skeleton.len).text();
+      var legacySkel = JSON.parse(skelTxt);
+      var lr = await ensureProfileFor(legacySkel, '导入角色');
+      legacyTarget = lr.id;
+    }
+
+    var report = { clips: 0, files: 0, profiles: createdProfiles, pending: 0, failed: [], elapsedMs: 0 };
+    // v1 单档案备份：全部动作归入那套档案；多档案 v1 备份动作无归属 → 待归档（report.pending 按实际计入）
+    var v1SingleTarget = (header.__bundleVersion < 2 && (header.profiles || []).length === 1) ? legacyTarget : null;
+    var t0 = Date.now();
+    var clipEntries = header.clips || [], fileEntries = header.files || [];
+    var total = clipEntries.length + fileEntries.length + (header.catalog ? 1 : 0);
+    var done = 0;
+    function tick() { done++; if (opts.onProgress) opts.onProgress({ phase: 'data', done: done, total: total }); }
+    var chain = Promise.resolve();
+
+    // 目录：有就跳过，没有才写入备份里的原文
+    if (header.catalog && header.catalog.offset !== undefined) {
+      chain = chain.then(function () {
+        return getOne('meta', 'catalog').then(function (cur) {
+          if (cur) { tick(); return null; }
+          return file.slice(header.catalog.offset, header.catalog.offset + header.catalog.len).text()
+            .then(function (txt) { return putCatalog(JSON.parse(txt)); })
+            .then(function () { tick(); });
+        });
+      });
+    }
+
+    // 动作归属：v2 按头内 profileId 对号 → 对不上按动作骨架指纹唯一匹配 → 都不行进待归档；
+    // v1 按上面的单档案/待归档规则。绝不绑到"当前活动档案"
+    function resolveClipTarget(e) {
+      if (header.__bundleVersion >= 2) {
+        if (e.profileId && pidMap[e.profileId]) return pidMap[e.profileId];
+        if (e.skeletonHash) {
+          var cands = [];
+          lp.list.forEach(function (p) { if ((p.skeletonHash || '') === e.skeletonHash && cands.indexOf(p.id) < 0) cands.push(p.id); });
+          if (cands.length === 1) return cands[0];
+        }
+        return PENDING_PID;
+      }
+      return v1SingleTarget || PENDING_PID;
+    }
+
+    clipEntries.forEach(function (e) {
+      chain = chain.then(function () {
+        if (opts.shouldCancel && opts.shouldCancel()) throw new Error('__CANCELLED__');
+        var blob = file.slice(e.offset, e.offset + e.len);
+        // AUD-004：写入前先解压验 JSON 结构、重算 SHA-256 与头内 hash 比对——坏数据绝不覆盖健康动作；
+        // 元数据和数据仍走同一个事务（atomic），失败连元数据都不会留（v2 的 hash 已 preflight 验过，这里幂等）
+        var target = resolveClipTarget(e);
+        return verifyClipBlob(blob, e).then(function (v) {
+          var stamp = target === PENDING_PID ? '' : (e.skeletonHash || (function () {
+            var hit = null; lp.list.forEach(function (p) { if (p.id === target) hit = p; });
+            return hit ? (hit.skeletonHash || '') : '';
+          })());
+          return putManyAtomic([
+            {
+              store: 'profileClips',
+              value: {
+                profileId: target, name: e.name, type: e.type || 'once', duration: e.duration || 0,
+                hash: v.hash, skeletonHash: stamp, enc: e.enc, sizeRaw: v.sizeRaw, sizeEnc: e.len, updatedAt: e.updatedAt || Date.now()
+              }
+            },
+            { store: 'profileClipData', value: { profileId: target, name: e.name, data: blob } }
+          ]).then(function () {
+            if (target === PENDING_PID) report.pending++;
+            report.clips++;
+          });
+        });
+      }).then(function () { tick(); }).catch(function (err) {
+        if ((err && err.message) === '__CANCELLED__') throw err;
+        report.failed.push({ name: e.name, reason: (err && err.message) || String(err) });
+        tick();
+      });
+    });
+
+    fileEntries.forEach(function (e) {
+      chain = chain.then(function () {
+        if (opts.shouldCancel && opts.shouldCancel()) throw new Error('__CANCELLED__');
+        // 档案命名空间的文件名换算到本机 pid；老备份的裸文件名归"备份骨架档案"（没有就归活动档案）
+        var target = legacyTarget;
+        var m = String(e.name).match(/^pfile:([^:]+):(.+)$/);
+        if (m) {
+          if (!pidMap[m[1]]) return tick(); // 备份里这套档案没骨架可导，文件无处安放：跳过
+          target = pidMap[m[1]];
+          e = { name: m[2], mime: e.mime, offset: e.offset, len: e.len, updatedAt: e.updatedAt };
+        }
+        if (!target) {
+          return getActiveProfile().then(function (p) {
+            if (!p) { tick(); return null; } // 没档案可归（全空库且备份无骨架）：文件跳过
+            return putProfileFile(p.id, e.name, file.slice(e.offset, e.offset + e.len)).then(function () { report.files++; tick(); });
+          });
+        }
+        return putProfileFile(target, e.name, file.slice(e.offset, e.offset + e.len))
+          .then(function () { report.files++; tick(); });
+      }).catch(function (err) {
+        if ((err && err.message) === '__CANCELLED__') throw err;
+        report.failed.push({ name: e.name, reason: (err && err.message) || String(err) });
+        tick();
+      });
+    });
+
+    return chain.then(async function () {
+      // 全新库第一次导完：把备份主档案设为活动档案（迁移/换机场景开箱即用）
+      if (!hadActive && legacyTarget) await setActiveProfile(legacyTarget).catch(function () {});
+      report.elapsedMs = Date.now() - t0;
+      return report;
+    });
+  }
+
+  // ============ 从插件导入动作（在线时用） ============
+
+  // 把 48795 已录制的动作拉进本地资料库。names 省略 = 全部；force=true 时已有的也重新拉；
+  // qcFn(name, clip) 可选质检回调（阶段 4）：返回 {ok:false, reason} 的不进库（防静止坏数据混进来）
+  // ARCH-2：HTTP 出口统一走 choreo-api.js 48795 高层 api（配对码头/JSON/状态映射都在客户端；
+  // 诊断页单独加载本模块时不会调到这里，且那时 ChoreoAPI 未加载会被上面的守卫拦下）
+  function syncFromPlugin(opts) {
+    opts = opts || {};
+    if (typeof ChoreoAPI === 'undefined') {
+      return Promise.reject(new Error('API 客户端未加载（choreo-api.js）'));
+    }
+    var client = ChoreoAPI.export;
+    var report = { total: 0, imported: 0, skipped: 0, failed: [], sizeEnc: 0, sizeRaw: 0, elapsedMs: 0, cancelled: false };
+    var t0 = Date.now();
+    // 非 2xx 响应（含 403 未配对）：与拆分前同语「插件（48795）没有响应」；网络/解析失败照原样抛
+    return client.api('/export/list').catch(function (e) {
+      if (e && e.status) throw new Error('插件（48795）没有响应');
+      throw e;
+    }).then(function (j) {
+      var names = (j && j.clips) || [];
+      if (opts.names && opts.names.length) {
+        var want = {};
+        opts.names.forEach(function (n) { want[n] = true; });
+        names = names.filter(function (n) { return want[n]; });
+      }
+      report.total = names.length;
+      return clipIndex().then(function (idx) {
+        var have = {};
+        idx.forEach(function (c) { have[c.name] = true; });
+        var targets = names.filter(function (n) { return opts.force || !have[n]; });
+        report.skipped = names.length - targets.length;
+        return targets;
+      });
+    }).then(function (targets) {
+      var chain = Promise.resolve();
+      targets.forEach(function (n, i) {
+        chain = chain.then(function () {
+          if (opts.shouldCancel && opts.shouldCancel()) { report.cancelled = true; throw new Error('__STOP__'); }
+          if (opts.onProgress) opts.onProgress({ done: i, total: targets.length, name: n });
+          return client.api('/export/getclip?name=' + encodeURIComponent(n)).then(function (clip) {
+              if (!clip || !clip.bones || clip.error) throw new Error(clip && clip.error ? clip.error : '动作数据无效');
+              if (opts.qcFn) {
+                var qc = opts.qcFn(n, clip);
+                if (qc && !qc.ok) throw new Error(qc.reason || '质检未通过');
+              }
+              return putClip(n, clip);
+            }).then(function (meta) {
+              report.imported++;
+              report.sizeEnc += meta.sizeEnc;
+              report.sizeRaw += meta.sizeRaw;
+            }).catch(function (err) {
+              if ((err && err.message) === '__STOP__') throw err;
+              // 非 2xx 的客户端错误按插件「error」短码取词（与拆分前解析 body 同语）；其余用异常文本
+              report.failed.push({ name: n, reason: (err && err.body && err.body.error) || (err && err.message) || String(err) });
+            });
+        });
+      });
+      return chain;
+    }).then(function () {
+      report.elapsedMs = Date.now() - t0;
+      return report;
+    });
+  }
+
+  // ============ 导出 API ============
+
+  window.ChoreoLibrary = {
+    available: available,
+    useDb: useDb,
+    useBackend: useBackend,
+    repairOrphans: repairOrphans,
+    stats: stats,
+    clear: clear,
+    getSkeleton: getSkeleton,
+    putSkeleton: putSkeleton,
+    getSkeletonInfo: getSkeletonInfo,
+    getCatalog: getCatalog,
+    putCatalog: putCatalog,
+    getClip: getClip,
+    putClip: putClip,
+    deleteClip: deleteClip,
+    clipIndex: clipIndex,
+    pendingClipIndex: pendingClipIndex,
+    assignPendingClips: assignPendingClips,
+    hasClips: hasClips,
+    hashObject: hashObject,
+    getModelFiles: getModelFiles,
+    getModelFile: getModelFile,
+    putModelFile: putModelFile,
+    deleteModelFiles: deleteModelFiles,
+    listProfiles: listProfiles,
+    createProfile: createProfile,
+    deleteProfile: deleteProfile,
+    renameProfile: renameProfile,
+    getActiveProfile: getActiveProfile,
+    setActiveProfile: setActiveProfile,
+    getProfileFile: getProfileFile,
+    getProfileFileInfo: getProfileFileInfo,
+    putProfileFile: putProfileFile,
+    exportBundle: exportBundle,
+    importBundle: importBundle,
+    syncFromPlugin: syncFromPlugin
+  };
+})();

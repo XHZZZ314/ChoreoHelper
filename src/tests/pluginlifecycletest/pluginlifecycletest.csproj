@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\PluginCleanup.cs" Link="PluginCleanup.cs" />
+    <Compile Include="..\..\InFlightTracker.cs" Link="InFlightTracker.cs" />
+    <Compile Include="..\..\HttpDispatchPolicy.cs" Link="HttpDispatchPolicy.cs" />
+    <Compile Include="..\..\RequestDispatcher.cs" Link="RequestDispatcher.cs" />
+  </ItemGroup>
+</Project>

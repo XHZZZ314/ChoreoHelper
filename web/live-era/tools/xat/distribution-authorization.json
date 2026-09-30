@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "switch": "xat-distribution-authorization",
+  "status": "unauthorized",
+  "statusTextZh": "未授权对外分发（仅属主自用）",
+  "lastReviewed": "2026-09-17",
+  "supervisedByTask": "TASK-20260917-SIMPLE-CHOREO-XAT-BUNDLE",
+  "reviewBasis": "docs/XAT-LICENSE-REVIEW-20260916.md（P1-B：owner-legal-decision，未放行公开再分发）",
+  "flipConditions": [
+    "GitHub Etheirys/XAT issue #19 维护者回复：确认独立下游应用可公开分发 XATHavokInterop.exe，并给出适用的 Havok 协议/许可证明（或明确必须自行取得 Havok 授权）",
+    "Havok 2014 SDK 实际适用协议与上游授权链闭合，覆盖本转换器与非游戏工具用途（P1-B §5 问题 1）",
+    "Autodesk FBX SDK 2014.2.1 的许可主体、地域/产品范围、告知义务与第三方条款落实（P1-B §5 问题 2）",
+    "EulerAngles 修改副本的中间来源/修改权属获维护者确认（P1-B §5 问题 3、§7.1）",
+    "属主审阅上述证据后明确决定对外分发（书面记录落档）"
+  ],
+  "flipProcedure": {
+    "step1": "把各项授权证据落档到 docs 或 .agent/evidence 对应任务目录，并在本文件 evidence 字段登记仓库相对指针",
+    "step2": "属主把本文件 status 改为 authorized，填写 authorizedBy / authorizedDate / evidence",
+    "step3": "重跑 scripts/test-release-gates.js；对外发布时重跑 scripts/make-release-staging.js。打包脚本已同时实现 unauthorized（拒绝 tools/ 子目录与钉死哈希字节进公开包）与 authorized（复制本目录全部文件并校验 exe 钉死哈希）两个分支，翻转开关不需要改任何打包或调用代码"
+  },
+  "authorizedBy": null,
+  "authorizedDate": null,
+  "evidence": null,
+  "note": "本文件是公开门禁读取的唯一分发授权开关：status 不为 authorized（含本文件缺失或损坏）时一律按未授权处理。翻转前禁止把本目录任何字节放进公开分发物。"
+}

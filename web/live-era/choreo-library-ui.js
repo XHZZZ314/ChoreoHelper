@@ -1,0 +1,294 @@
+// 主页资料库界面：负责角色档案、动作导入导出与资料库管理弹窗。
+'use strict';
+// ============ 阶段3：本地 3D 资料库窗口 ============
+// 动作/骨架/模型/目录存在浏览器（IndexedDB）里，游戏关了网页照样能用。
+// 这里只做管理：看占用、从插件导入动作、导出/导入备份、清空
+var _libBusy=false,_libCancel=false;
+function fmtMB(n){return (n/1048576).toFixed(1)+'MB'}
+// 只读所属动作元数据；指纹一致不代表已做人物外观或游戏执行验收。
+function libraryClipInventory(p){
+  var box=el('details','lib-clip-inventory');box.style.cssText='flex:1 1 100%;min-width:0';
+  var clips=p.clips||[];
+  box.appendChild(el('summary','','本档案动作：'+clips.length+' 条（展开查看）'));
+  var list=el('div','');list.style.cssText='max-height:160px;overflow:auto;padding:6px 8px;line-height:1.8;overflow-wrap:anywhere';
+  list.appendChild(el('div','','仅列本档案保存的动作；其他人物的同名动作不会借用。实际模型和动作预览以 3D 提示为准。'));
+  if(!clips.length)list.appendChild(el('div','','此档案没有已保存动作。请恢复该人物的角色包或资料库备份，或连接插件补录；已有编排保持不变。'));
+  clips.forEach(function(c){
+    var status=!p.hasSkeleton?'缺少人物骨架，兼容性未核实':!p.skeletonHash||!c.skeletonHash?'指纹未记录，兼容性未核实':p.skeletonHash!==c.skeletonHash?'骨架不兼容，不会套用':'骨架指纹一致';
+    var item=el('div','lib-clip-item','/'+c.name+' · '+status);
+    item.dataset.clipName=c.name;list.appendChild(item);
+  });
+  box.appendChild(list);return box;
+}
+function showLibraryModal(){
+  // 入口绑定到打开面板时的具名舞者；异步操作不能借用另一项目或后来改绑的目标。
+  var projectOp=typeof _projectOperation==='number'?_projectOperation:null;
+  function importCancelled(){return _libCancel||!bd.isConnected||(projectOp!==null&&!currentProjectOperation(projectOp))}
+  var useTarget=typeof window.__choreoModelImportTarget==='function'?window.__choreoModelImportTarget():null;
+  var bd=el('div','modal-bg');bd.style.zIndex='600'; // 高于浮动 3D 预览，低于立即停止栏。
+  var m=el('div','modal');m.style.cssText='min-width:min(520px,90vw);width:960px;box-sizing:border-box';
+  m.innerHTML='<h3>📦 3D 资料库（存在本机浏览器里）</h3>';
+  var info=el('div','');info.style.cssText='font-size:12px;line-height:1.7;color:#aab6c8;border:1px solid #252e3c;border-radius:6px;padding:8px 10px;margin-bottom:8px;white-space:pre-line';
+  m.appendChild(info);
+  // 角色档案（2026-08-30）：列出库内所有「模型+骨架」档案；重命名/删除在这里，切换在 3D 预览面板
+  var profBox=el('div','');profBox.style.cssText='margin-bottom:8px';
+  m.appendChild(profBox);
+  var profTip=el('div','');profTip.style.cssText='font-size:11px;color:#7d8a9c;margin-bottom:8px';
+  profTip.textContent='项目文件只保存编排与引用；人物/动作由角色包或资料库备份另行恢复，歌曲必须重新选择原文件。同名不是同一资产：请核对档案标识和骨架指纹，再明确选择「用于舞者」。角色包可只含骨架和动作，没有人物模型时仍显示替身。导入后点档案旁的「用于舞者」，再从侧栏添加动作。模型文件夹仍在 3D 预览底部导入。未映射的原始动作候选不能当成可用角色包；骨架不兼容或资产缺失时按 3D 提示补齐，不借用其他档案。';
+  m.appendChild(profTip);
+  var result=el('div','lib-result');result.style.cssText='display:none;font-size:12px;line-height:1.6;color:#e8c57a;white-space:pre-line;margin-bottom:8px';
+  result.setAttribute('role','status');m.appendChild(result);
+  function report(message){if(!bd.isConnected||(projectOp!==null&&!currentProjectOperation(projectOp)))return;result.textContent=message;result.style.display='';showToast(message)}
+  function currentTarget(){return bd.isConnected&&useTarget&&useTarget.isCurrent()}
+  // FIX-D/AUD2-008：待归档动作区——旧数据迁移/备份导入时归属不明的动作在这等主人认领
+  var pendBox=el('div','');pendBox.style.cssText='display:none;margin-bottom:8px';
+  m.appendChild(pendBox);
+  var row=el('div','');row.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px';
+  var bImp=el('button','btn primary','⬇ 从插件导入全部动作');
+  bImp.title='把插件里已录制的全部动作拉进本机资料库（要游戏和插件开着）。平时网页连上插件会自动在后台补齐缺的动作，不用点这个；它用于想立刻导全量或补拉时手动来一次。已导入过的自动跳过';
+  var bImpC=el('button','btn','🧩 导入角色包');
+  bImpC.title='选择别人发来的 .choreochar 角色包文件，校验通过后导入成一套新档案（骨架+模型+那套档案的动作）。不会动现有档案，也不会切走正在用的角色';
+  var bExp=el('button','btn','📤 导出备份');
+  bExp.title='把整个资料库（动作/骨架/模型/目录）导出成一个备份文件，换浏览器/换电脑时用「导入备份」恢复';
+  var bImpF=el('button','btn','📥 导入备份');
+  bImpF.title='选择之前导出的资料库备份文件恢复（会校验格式和角色骨架，不合格会拒绝）';
+  var bClr=el('button','btn danger','清空');
+  bClr.title='清空本机浏览器里的 3D 资料库（动作/骨架/模型/目录缓存；不影响草稿和插件里的录制文件）';
+  row.appendChild(bImp);row.appendChild(bImpC);row.appendChild(bExp);row.appendChild(bImpF);row.appendChild(bClr);
+  m.appendChild(row);
+  // 插件内 XAT 转换（TASK-20260917-PLUGIN-XAT-INVOCATION）：资料库内的游戏动作转换入口
+  if(window.ChoreoXatConvertUI)m.appendChild(window.ChoreoXatConvertUI.buildSection({report:report,isCancelled:importCancelled}));
+  var prog=el('div','');prog.style.cssText='display:none;font-size:12px;color:#e8c57a;margin-bottom:8px';
+  var progTxt=el('div','');
+  var bCan=el('button','btn','停止');bCan.style.marginTop='4px';
+  prog.appendChild(progTxt);prog.appendChild(bCan);
+  m.appendChild(prog);
+  var fi=el('input','');fi.type='file';fi.accept='.choreolib';fi.style.display='none';m.appendChild(fi);
+  var fiC=el('input','');fiC.type='file';fiC.accept='.choreochar';fiC.style.display='none';m.appendChild(fiC);
+  bd.onclick=function(e){if(e.target===bd)document.body.removeChild(bd)};
+  bd.appendChild(m);
+  document.body.appendChild(bd);
+
+  function refreshStats(){
+    ChoreoLibrary.stats().then(function(s){
+      if(!bd.isConnected)return;
+      if(!s.clips&&!s.skeleton&&!s.catalog&&!s.modelFiles.length&&!(s.profileCount>0)){
+        info.textContent='资料库还是空的。\n已有本地 .choreochar 文件：点「导入角色包」，无需打开游戏。\n已有 Meddle 模型：在 3D 预览底部导入完整角色文件夹。\n已有插件动作：连接后可点「从插件导入全部动作」。模型与动作分别准备，不会通过录动作生成人物模型。';
+        profBox.textContent='';profBox.style.display='none';
+        pendBox.style.display='none';
+        return;
+      }
+      profBox.style.display='';
+      var lines=['默认档案动作：'+s.clips+' 条'+(s.sizeEnc?('（压缩后 '+fmtMB(s.sizeEnc)+'，原始 '+fmtMB(s.sizeRaw)+'）'):'')];
+      lines.push('角色档案：'+(s.profileCount||0)+' 套'+(s.skeleton?('（默认「'+(s.profile&&s.profile.name||'?')+'」· '+s.boneCount+' 骨）'):''));
+      lines.push('动作目录：'+(s.catalog?'已缓存':'无'));
+      lines.push('默认档案模型：'+(s.modelFiles.length?(s.modelFiles.slice(0,2).join(' + ')+(s.modelFiles.length>2?' 等 '+s.modelFiles.length+' 个文件':'')+'（'+fmtMB(s.modelSize)+'）'):'无（显示内置替身）'));
+      info.textContent=lines.join('\n');
+      // 档案清单（每套一行：名字 + 骨数/模型概况 + 重命名/删除）
+      profBox.textContent='';
+      (s.profiles||[]).forEach(function(p){
+        var row=el('div','');row.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0;border-top:1px solid #1d2634;font-size:12px';
+        row.dataset.profileId=p.id;
+        var nm=el('span','');nm.style.cssText='flex:1 1 100%;overflow-wrap:anywhere;color:'+(p.isActive?'#9fc6ff':'#aab6c8');
+        nm.textContent=(p.isActive?'▶ ':'　')+p.name+'（'+p.boneCount+' 骨 · '+(p.modelNames&&p.modelNames.length?'模型文件已保存：'+p.modelNames.slice(0,2).join('+')+(p.modelNames.length>2?' 等 '+p.modelNames.length+' 个文件':''):'模型未导入 · 替身预览')+'） · 标识 '+p.id+' · 骨架 '+String(p.skeletonHash||'未知').slice(0,12)+(p.isActive?' ← 默认档案':'');
+        nm.title='档案标识：'+p.id+'\n骨架指纹：'+(p.skeletonHash||'未知');
+        var bUse=el('button','btn primary lib-use',useTarget?'用于「'+useTarget.label+'」':'请先选择舞者');
+        bUse.style.cssText='font-size:11px;padding:1px 8px';bUse.disabled=!useTarget||!p.hasSkeleton;
+        bUse.title='只绑定这位舞者；保留时间轴和其他舞者。可撤销，绑定会随项目保存。模型外观及兼容性以 3D 预览提示为准';
+        bUse.onclick=async function(){
+          if(_libBusy)return;
+          if(!currentTarget()){report('目标项目或舞者已改变，请关闭后重新打开资料库再选择');return}
+          setBusy(true);bUse.disabled=true;
+          try{
+            var fresh=await ChoreoLibrary.getProfile(p.id);
+            if(!fresh||!fresh.skeleton)throw new Error('角色档案或骨架缺失，请重新导入角色包');
+            if(!currentTarget()){report('目标项目或舞者已改变，请关闭后重新打开资料库再选择');return}
+            if(!await useTarget.bind(p.id)){report('目标或档案已改变，请关闭后重新打开资料库再选择');return}
+            showToast('已用于「'+useTarget.label+'」，从侧栏添加动作后即可网页播放；'+(fresh.modelNames&&fresh.modelNames.length?'人物外观以 3D 预览为准':'模型未导入，当前为替身预览'));
+            bd.remove();
+          }catch(e){report('使用失败：'+e.message)}
+          finally{setBusy(false);bUse.disabled=!useTarget||!p.hasSkeleton}
+        };
+        var bRn=el('button','btn','重命名');bRn.style.fontSize='11px';bRn.style.padding='1px 8px';
+        bRn.title='给这套角色档案改个名字（如角色名）';
+        bRn.onclick=function(){
+          var nn=prompt('档案新名字：',p.name);if(nn===null)return;
+          ChoreoLibrary.renameProfile(p.id,nn).then(function(){
+            _skelInfoCache=null;refreshStats();if(window.__p3dProfilesChanged)__p3dProfilesChanged();
+          }).catch(function(e){showToast('改名失败：'+e.message)});
+        };
+        var bShare=el('button','btn','导出角色包');bShare.style.fontSize='11px';bShare.style.padding='1px 8px';
+        bShare.title='把这套档案（骨架+模型+它的动作）导出成一个 .choreochar 角色包文件，发给别的机器的主人用「导入角色包」收下；不含工程、动作目录和其他档案';
+        bShare.onclick=function(){
+          if(!p.hasSkeleton){showToast('「'+p.name+'」没有骨架，不能导出角色包');return}
+          if(_libBusy)return;
+          setBusy(true);progTxt.textContent='正在打包角色包…';
+          ChoreoLibrary.createSharePackage(p.id).then(function(blob){
+            var a=document.createElement('a');
+            a.href=URL.createObjectURL(blob);
+            a.download=(p.name||'角色')+'.choreochar';
+            document.body.appendChild(a);a.click();a.remove();
+            setTimeout(function(){URL.revokeObjectURL(a.href)},30000);
+            showToast('角色包已导出（'+fmtMB(blob.size)+'）');
+          }).catch(function(e){showToast('导出失败：'+e.message)})
+            .then(function(){setBusy(false);refreshStats()});
+        };
+        var bDel=el('button','btn danger','删除');bDel.style.fontSize='11px';bDel.style.padding='1px 8px';
+        bDel.title='删除这套档案（连同它的模型文件；动作不受影响，仍留在资料库里）';
+        bDel.onclick=function(){
+          if(!confirm('删除角色档案「'+p.name+'」？\n（它的模型文件一起删；动作数据不受影响'+(p.isActive?'；正在使用，删掉后面板会切到剩余档案或显示替身':'')+'）'))return;
+          ChoreoLibrary.deleteProfile(p.id).then(function(){
+            showToast('已删除档案「'+p.name+'」');
+            _skelInfoCache=null;refreshStats();
+            if(window.__p3dProfilesChanged)__p3dProfilesChanged();
+            scheduleRealtimeCheck();
+          }).catch(function(e){showToast('删除失败：'+e.message)});
+        };
+        row.appendChild(nm);row.appendChild(bUse);row.appendChild(bShare);row.appendChild(bRn);row.appendChild(bDel);row.appendChild(libraryClipInventory(p));
+        profBox.appendChild(row);
+      });
+      renderPending(s);
+    }).catch(function(e){info.textContent='资料库读取失败：'+e.message});
+  }
+  // FIX-D/AUD2-008：待归档动作——勾选 + 选目标档案 → 归档（写入动作归属并盖上该档案骨架指纹）
+  function renderPending(s){
+    if(!(s.pendingClips>0)){pendBox.style.display='none';return}
+    pendBox.style.display='';pendBox.textContent='';
+    var head=el('div','');head.style.cssText='font-size:12px;color:#e8c57a;margin-bottom:4px';
+    head.textContent='⚠ 有 '+s.pendingClips+' 条动作等待归档（旧数据迁移/备份导入时无法确定属于哪套角色，不会自动绑定）';
+    pendBox.appendChild(head);
+    var listBox=el('div','');listBox.style.cssText='max-height:140px;overflow-y:auto;border:1px solid #2c3a50;border-radius:6px;padding:6px;margin-bottom:6px';
+    pendBox.appendChild(listBox);
+    var boxes=[];
+    ChoreoLibrary.pendingClipIndex().then(function(rows){
+      rows.forEach(function(r){
+        var lab=el('label','');lab.style.cssText='display:flex;align-items:center;gap:6px;font-size:12px;padding:1px 2px;color:#c7d2e2;cursor:pointer';
+        var cb=el('input','');cb.type='checkbox';cb.checked=true;cb.__clipName=r.name;
+        lab.appendChild(cb);lab.appendChild(el('span','',r.name));
+        listBox.appendChild(lab);boxes.push(cb);
+      });
+      if(!rows.length)listBox.appendChild(el('span','','（读取失败或已被处理）'));
+    }).catch(function(){listBox.appendChild(el('span','','待归档清单读取失败'))});
+    var act=el('div','');act.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap';
+    var sel=el('select','');sel.style.cssText='font-size:12px;padding:2px 4px';
+    (s.profiles||[]).forEach(function(p){
+      var o=document.createElement('option');o.value=p.id;o.textContent='归到「'+p.name+'」';sel.appendChild(o);
+    });
+    var bGo=el('button','btn primary','归档所选');bGo.style.fontSize='11px';
+    var bDel=el('button','btn danger','删除所选');bDel.style.fontSize='11px';
+    act.appendChild(sel);act.appendChild(bGo);act.appendChild(bDel);
+    pendBox.appendChild(act);
+    function pickedNames(){
+      var names=[];boxes.forEach(function(b){if(b.checked)names.push(b.__clipName)});return names;
+    }
+    bGo.onclick=function(){
+      var names=pickedNames();
+      if(!names.length){showToast('先勾选要归档的动作');return}
+      if(!sel.value){showToast('先选要归到哪套角色档案');return}
+      ChoreoLibrary.assignPendingClips(names,sel.value).then(function(moved){
+        showToast('已归档 '+moved.length+' 条动作');
+        if(window.__p3dLibChanged)__p3dLibChanged();
+        _libIdxCache=null;scheduleRealtimeCheck();
+        refreshStats();
+      }).catch(function(e){showToast('归档失败：'+e.message)});
+    };
+    bDel.onclick=function(){
+      var names=pickedNames();
+      if(!names.length){showToast('先勾选要删除的动作');return}
+      if(!confirm('删除这 '+names.length+' 条待归档动作？（不影响已归档的动作）'))return;
+      var chain=Promise.resolve();
+      names.forEach(function(n){chain=chain.then(function(){return ChoreoLibrary.deleteClip(n,'__pending__')})});
+      chain.then(function(){
+        showToast('已删除 '+names.length+' 条');
+        refreshStats();
+      }).catch(function(e){showToast('删除失败：'+e.message)});
+    };
+  }
+  function setBusy(busy,disableAll){
+    _libBusy=busy;_libCancel=false;
+    [bImp,bImpC,bExp,bImpF,bClr].forEach(function(b){b.disabled=!!(busy||disableAll)});
+    prog.style.display=busy?'block':'none';
+  }
+  bCan.onclick=function(){_libCancel=true;progTxt.textContent='正在停止…'};
+
+  function doImport(names){
+    if(_libBusy)return;
+    setBusy(true);
+    progTxt.textContent='连接插件读取动作清单…';
+    window.__libImportFromPlugin(names,function(p){progTxt.textContent='导入动作 '+(p.done+1)+'/'+p.total+' · '+(p.name||'')+'…'})
+      .then(function(r){
+        var msg='导入完成：新收 '+r.imported+' 条，跳过已有 '+r.skipped+' 条'+(r.failed.length?('，失败 '+r.failed.length+' 条：'+r.failed.slice(0,5).map(function(f){return f.name}).join('、')+(r.failed.length>5?' 等':'')):'')
+          +'（耗时 '+(r.elapsedMs/1000).toFixed(1)+'s，压缩后 '+fmtMB(r.sizeEnc)+'）';
+        showToast(msg);progTxt.textContent=msg;
+        if(window.__p3dLibChanged)__p3dLibChanged();
+        _libIdxCache=null;scheduleRealtimeCheck(); // 资料库变了：缺录判定立即重算
+      })
+      .catch(function(e){showToast('导入失败：'+e.message);progTxt.textContent='导入失败：'+e.message})
+      .then(function(){setBusy(false);refreshStats()});
+  }
+  bImp.onclick=function(){doImport(null)};
+  bExp.onclick=function(){
+    if(_libBusy)return;
+    setBusy(true);progTxt.textContent='正在打包资料库…';
+    ChoreoLibrary.exportBundle().then(function(blob){
+      var d=new Date(),p2=function(n){return n<10?'0'+n:n};
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='choreo-library-'+d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'.choreolib';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href)},30000);
+      showToast('备份已导出（'+fmtMB(blob.size)+'）');
+    }).catch(function(e){showToast('导出失败：'+e.message)})
+      .then(function(){setBusy(false);refreshStats()});
+  };
+  bImpF.onclick=function(){if(!_libBusy)fi.click()};
+  // CHARACTER-ASSETS-P5：.choreochar 角色包导入（校验通过才写库；进度/停止与其他导入共用一套）
+  bImpC.onclick=function(){if(!_libBusy)fiC.click()};
+  fiC.onchange=function(e){
+    var f=e.target.files[0];e.target.value='';
+    if(!f||_libBusy)return;
+    setBusy(true);progTxt.textContent='正在校验角色包…';
+    ChoreoLibrary.importSharePackage(f,{
+      onProgress:function(p){progTxt.textContent=p.phase==='done'?('导入角色包完成…'):('导入角色包·校验 '+(p.done||0)+'/'+(p.total||0)+'…')},
+      shouldCancel:importCancelled
+    }).then(function(r){
+      if(importCancelled())return;
+      report('角色包导入完成：新档案「'+r.name+'」（动作 '+r.clips+' 条；'+(r.files?'模型文件已保存 '+r.files+' 个，外观和兼容性以 3D 预览为准':'模型未导入 · 替身预览')+'）。\n项目引用不会按名字自动改绑。下一步：核对档案后点「用于舞者」重新关联；已有时间轴保留，无需重复添加动作。');
+      if(window.__p3dLibChanged)__p3dLibChanged();
+      if(window.__p3dProfilesChanged)__p3dProfilesChanged(); // 收养带来新档案：面板重新对号（活动指针不动）
+      _libIdxCache=null;scheduleRealtimeCheck();
+    }).catch(function(e){report('导入被拒绝：'+e.message);progTxt.textContent='导入被拒绝：'+e.message})
+      .then(function(){setBusy(false);refreshStats()});
+  };
+  fi.onchange=function(e){
+    var f=e.target.files[0];e.target.value='';
+    if(!f||_libBusy)return;
+    setBusy(true);progTxt.textContent='正在读取备份…';
+    ChoreoLibrary.importBundle(f,{shouldCancel:importCancelled,onProgress:function(p){progTxt.textContent='校验备份 '+p.done+'/'+p.total+'…'}})
+      .then(function(r){
+        if(importCancelled())return;
+        showToast('备份导入完成：动作 '+r.clips+' 条'+(r.pending?('（其中 '+r.pending+' 条待归档，见下方清单）'):'')+(r.profiles?('，角色档案 '+r.profiles+' 套'):'')+(r.files?('，模型文件 '+r.files+' 个'):'')+(r.failed.length?('，失败 '+r.failed.length+' 项'):'')+'（'+(r.elapsedMs/1000).toFixed(1)+'s）');
+        if(window.__p3dLibChanged)__p3dLibChanged();
+        if(window.__p3dProfilesChanged)__p3dProfilesChanged(); // 备份可能带来新档案/换活动档案，面板整体对号
+        _libIdxCache=null;_skelInfoCache=null;scheduleRealtimeCheck();
+      })
+      .catch(function(e){if(bd.isConnected)report('导入被拒绝：'+e.message)})
+      .then(function(){setBusy(false);refreshStats()});
+  };
+  bClr.onclick=function(){
+    if(_libBusy)return;
+    if(!confirm('清空本机浏览器里的 3D 资料库？\n（动作/骨架/模型/目录缓存都会删掉，草稿不受影响；不可恢复）'))return;
+    ChoreoLibrary.clear().then(function(){
+      showToast('资料库已清空');
+      if(window.__p3dLibChanged)__p3dLibChanged();
+      if(window.__p3dProfilesChanged)__p3dProfilesChanged(); // 档案也没了：面板回到快照/替身并重新对号
+      _libIdxCache=null;_skelInfoCache=null;scheduleRealtimeCheck();
+      refreshStats();
+    }).catch(function(e){showToast('清空失败：'+e.message)});
+  };
+  var libOk=!!(window.ChoreoLibrary&&ChoreoLibrary.available());
+  if(!libOk){
+    info.textContent='此浏览器不支持本地资料库（IndexedDB），离线动作功能不可用';
+    [bImp,bImpC,bExp,bImpF,bClr].forEach(function(b){b.disabled=true});
+  }else refreshStats();
+}

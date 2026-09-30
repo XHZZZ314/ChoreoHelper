@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>检查中…</title></head>
+<body style="background:#0d1420;color:#cdd8e8;font:14px Consolas,monospace;padding:20px;word-break:break-all">
+<div id="b">检查中…</div>
+<script>
+// 临时诊断页：拉取 __real.html（真正的 pose-viewer），抽出 module 脚本，
+// 用动态 import 让浏览器解析执行，把语法/运行错误写到标题和正文里
+(async () => {
+  const out = (t) => { document.getElementById('b').textContent = t; document.title = 'JSCHECK: ' + t.slice(0, 120); };
+  try {
+    const html = await (await fetch('/__real.html')).text();
+    const m = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+    if (!m) { out('NO MODULE FOUND in __real.html'); return; }
+    const url = 'data:text/javascript;base64,' + btoa(unescape(encodeURIComponent(m[1])));
+    try {
+      await import(url);
+      out('PARSE-OK（模块可解析；若卡在运行时相对导入属预期，能走到那步=语法没问题）');
+    } catch (e) {
+      out('MODULE-ERR ' + e.name + ': ' + e.message + ' @' + (e.lineno || '?'));
+    }
+  } catch (e) {
+    out('FETCH-ERR ' + e.name + ': ' + e.message);
+  }
+})();
+</script>
+</body>
+</html>

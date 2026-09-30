@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!--
+  p3d-trace.html — v0.6.6 一次性诊断页（用完从部署位删，源文件保留）
+  干什么：iframe 加载真实编舞主页（#3d），注入一条 golddance@100s，模拟主页播放
+  （每帧推进 store.currentTime，isPlaying=true——与主页 playLoop 完全同构的数据路径），
+  连续跨越 3 次循环回卷点，逐帧记录面板遥测文字（t/头高/当前动作）。
+  结束后把整条轨迹写进本页 DOM（<pre id="trace">），供 dump-dom 离线分析。
+  判读：golddance 循环 6.00s，回卷点在 t=106/112/118；站姿头高≈1.64m，
+  舞蹈中会下蹲到≈1.1x m——若回卷窗口内头高突然飙到 ≈1.64 又落回，即"闪回站姿"实锤。
+-->
+<html lang="zh">
+<head><meta charset="utf-8"><title>TRACE-WAIT</title>
+<style>body{background:#111;color:#dfd;font:13px/1.6 monospace;margin:12px;white-space:pre}iframe{width:420px;height:300px;border:1px solid #444;display:block;margin-top:8px}</style>
+</head>
+<body>
+<div id="log">等待主页与 3D 面板就绪…</div>
+<iframe id="f" src="./choreo-helper-app.html#3d"></iframe>
+<pre id="trace"></pre>
+<script>
+var logEl = document.getElementById('log'), traceEl = document.getElementById('trace');
+function L(s){ logEl.textContent += '\n' + s; }
+var rows = [];
+(function wait(attempt){
+  var w = document.getElementById('f').contentWindow;
+  var D = w && w.__p3dDebug;
+  if (attempt % 10 === 0) {
+    var st = 'w=' + !!w + ' D=' + !!D + ' store=' + !!(w && w.store);
+    if (D) { var d = D(); st += ' ready=' + d.ready + ' dancers=' + (w.store && w.store.dancers ? w.store.dancers.length : '无'); }
+    L(attempt + ': ' + st);
+  }
+  // 无头实例 localStorage 为空（没有保存过的编舞），只等面板就绪 + 默认舞者存在
+  var ok = D && w.store && D().ready && w.store.dancers && w.store.dancers.length;
+  if (!ok) { if (attempt > 150) { finish('超时：主页未就绪'); } else setTimeout(function(){wait(attempt+1);}, 300); return; }
+  run(w, w.store);
+})(0);
+
+function run(w, s){
+  (s.dancers[0].actionClips = s.dancers[0].actionClips || []).push({ start: 100, data: { command: '/golddance' } });
+  L('已注入 golddance@100s，等待动作库补拉…');
+  var t0 = Date.now();
+  (function waitClip(){
+    var e = w.__p3dDebug().engine;
+    var c = e && e.clipLibrary['golddance'];
+    if (!c) { if (Date.now() - t0 > 20000) { finish('超时：golddance 未注册'); } else setTimeout(waitClip, 400); return; }
+    play(w, s, c.duration);
+  })();
+}
+
+function play(w, s, dur){
+  var info = function(){ var el = w.document.querySelector('.p3d-info'); return el ? el.textContent : ''; };
+  L('golddance 时长 ' + dur.toFixed(2) + 's，回卷点在 100+' + dur.toFixed(0) + ' 的倍数；开始模拟播放 3 圈');
+  s.currentTime = 100; s.isPlaying = true;   // 播放语义：preview3d 会传 blendLoopSeams=true
+  var last = performance.now(), tEnd = 100 + dur * 3 + 1;
+  (function frame(){
+    var now = performance.now(), dt = (now - last) / 1000; last = now;
+    if (dt > 0.1) dt = 0.1;
+    s.currentTime += dt;                      // 同构于主页 playLoop 的推进方式
+    rows.push(s.currentTime.toFixed(3) + ' | ' + info());
+    if (s.currentTime < tEnd) requestAnimationFrame(frame);
+    else { s.isPlaying = false; finish('OK rows=' + rows.length); }
+  })();
+}
+
+function finish(msg){
+  traceEl.textContent = rows.join('\n');
+  logEl.textContent += '\n' + msg + '\n[完成]';
+  document.title = 'TRACE-DONE';
+}
+</script>
+</body>
+</html>

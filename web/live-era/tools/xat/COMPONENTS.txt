@@ -1,0 +1,53 @@
+ChoreoHelper tools/xat 组件与来源清单（成分清单）
+登记任务：TASK-20260917-SIMPLE-CHOREO-XAT-BUNDLE / 合同 r1 / 2026-09-17
+
+== 文件清单（本目录全部内容） ==
+XATHavokInterop.exe
+  11,167,232 字节
+  SHA-256 f9a4ae0dd7f30058d8b0092aca3c95a21185b446a9bbf347f9123e43dd1917b2
+  用途：Havok tagfile → FBX 转换命令行工具（XAT 上游转换器）
+  字节来源：属主本机固定副本（登记于 P1-B 审查证据 local-pinned.json 的路径）；未下载官方 XAT.zip
+LICENSE-XAT.txt
+  XAT 上游 BSD-3-Clause 许可文本副本；来源 = P1-B 审查存档 upstream/LICENSE.md（逐字节复制）
+COMPONENTS.txt
+  本文件（成分清单）
+distribution-authorization.json
+  分发授权开关（当前 status=unauthorized，即未授权对外分发、仅属主自用）
+README.txt
+  自用说明 / 运行前置 / 回退说明
+
+== 转换器身份（上游指针） ==
+上游项目：Etheirys/XAT（XIV Animation Toolkit），https://github.com/Etheirys/XAT
+审查锚点版本：v2026.2.10.210（提交 11e60de43784b3ae25bbdaf1644727f09be2f4dd）
+本副本字节：11,167,232 字节，SHA-256 f9a4ae0d…7b2（全值见上），
+  Git blob SHA-1 6d763f5b3853aca9b515f6c6d16b93ee691234ac——与固定发行提交文件页短标识
+  6d763f5 相符；此为关联线索，不是完整 blob 验证，也不证明等同官方 XAT.zip 内字节（P1-B §2）。
+
+== 内嵌第三方成分（随 exe 字节存在，不是本目录单独文件） ==
+- Havok 2014 SDK（头/源片段与 13 个静态链接库 hkBase/hkSerialize/… 的链接产物）
+  再分发授权链未闭合：P1-B §4 L2 裁定 = 需属主法律决定（未放行）。
+- Autodesk FBX SDK 2014.2.1（libfbxsdk-md.lib 链接）
+  实际许可主体/传递条件/告知义务未证：P1-B §4 L3 = 需属主法律决定。
+- EulerAngles（Havok/ThirdParty/Euler）
+  Graphics Gems 原始部分正面许可已补齐；XAT 修改副本来源待维护者确认（P1-B §7.1）。
+- XAT 自有 C#/C++ 代码：BSD-3-Clause（条件：保留版权/条件/免责声明，不得借名背书）。
+
+== 运行前置（不随包） ==
+Microsoft Visual C++ 2012 Redistributable (x86)——本 exe 动态链接 x86 版
+MSVCP110.dll 与 MSVCR110.dll（PE 导入表实证）。本目录不携带这两个 DLL；
+运行环境需自备，缺失时 exe 无法启动（属主本机当前以固定工具链目录内的 app-local
+副本满足，系统级未安装——2026-09-17 实测）。
+
+== 许可审查结论与分发边界 ==
+P1-B 审查（docs/XAT-LICENSE-REVIEW-20260916.md §1/§4/§7）总体结论：owner-legal-decision——
+当前不能据此把 XATHavokInterop.exe 打进对外分发物；XAT 顶层 BSD 许可不覆盖其内嵌
+Havok/FBX SDK 字节的再分发。属主 2026-09-17 已知悉该结论并决定先行打包自用、风险自担
+（本携带决定不推翻该审查）。
+当前状态：仅属主自用；公开 staging 白名单不复制本目录，公开门禁在
+status=unauthorized 时显式拒绝 tools/ 子目录与钉死哈希字节进入公开分发物。
+
+== 相关文档指针（仓库相对路径） ==
+- docs/XAT-LICENSE-REVIEW-20260916.md —— P1-B 许可审查全文
+- .agent/tasks/TASK-20260917-SIMPLE-CHOREO-XAT-BUNDLE.md —— 本携带决定的任务合同
+- .agent/evidence/TASK-20260916-SIMPLE-CHOREO-P1B/upstream/LICENSE.md —— 上游许可原文存档
+- .agent/evidence/TASK-20260917-SIMPLE-CHOREO-XAT-BUNDLE/ —— 本任务证据（含本清单证据副本）

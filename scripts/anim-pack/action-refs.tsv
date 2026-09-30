@@ -1,0 +1,2190 @@
+# action-refs.tsv - Action 表出招/施放引用导出（dump-action-refs 生成，勿手改；游戏大版本更新后重跑）
+# rowId	name	jobName	jobId	endKey(AnimationEnd)	startKey(AnimationStart)
+1	任务道具	冒险者	0	normal/item_end	normal/item_start
+2	任务指令	冒险者	0		normal/magic_cmn_start
+3	冲刺	冒险者	0	ability/no_mot_sprint	
+4	坐骑	冒险者	0	mount/start/call_end	mount/start/call_start
+5	传送	冒险者	0	normal/telepo	normal/magic_cmn_start
+6	返回	冒险者	0	normal/dejon	normal/magic_cmn_start
+9	先锋剑	剑术师	1	ws/bt_swd_sld/wsh001	
+15	暴乱剑	剑术师	1	ws/bt_swd_sld/ws_s07	
+16	盾牌猛击	剑术师	1	ws/bt_swd_sld/ws_s05	
+17	预警	剑术师	1	ability/swd_knight/abl004	
+20	战逃反应	剑术师	1	ability/swd_knight/abl008	
+21	战女神之怒	剑术师	1	ws/bt_swd_sld/ws_s02	
+22	壁垒	骑士	19	ability/swd_knight/abl009	
+23	厄运流转	剑术师	1	ws/bt_swd_sld/ws_s03	
+24	投盾	剑术师	1	ws/bt_swd_sld/ws_s06	
+27	保护	骑士	19	ability/swd_knight/abl007	
+28	钢铁信念	剑术师	1	magic/swd_knight/auraofcourage	battle/magic_pld_start
+29	深奥之灵	骑士	19	ws/bt_swd_sld/ws_s04	
+30	神圣领域	骑士	19	ability/swd_knight/abl010	
+31	重劈	斧术师	3	ws/bt_2ax_emp/wsh001	
+37	凶残裂	斧术师	3	ws/bt_2ax_emp/wsh004	
+38	狂暴	斧术师	3	ability/2ax_warrior/abl004	
+40	战栗	斧术师	3	ability/2ax_warrior/abl005	
+41	超压斧	斧术师	3	ws/bt_2ax_emp/ws_s14	
+42	暴风斩	斧术师	3	ws/bt_2ax_emp/wsh005	
+43	死斗	斧术师	3	ability/2ax_warrior/abl007	
+44	复仇	斧术师	3	ability/2ax_warrior/abl010	
+45	暴风碎	斧术师	3	ws/bt_2ax_emp/ws_s06	
+46	飞斧	斧术师	3	ws/bt_2ax_emp/ws_s05	
+48	守护	斧术师	3	ability/2ax_warrior/abl006	
+49	原初之魂	战士	21	ws/bt_2ax_emp/ws_s07	
+51	钢铁旋风	战士	21	ws/bt_2ax_emp/ws_s04	
+52	战嚎	战士	21	ability/2ax_warrior/abl009	
+53	连击	格斗家	2	ws/bt_clw_clw/ws_s02	
+54	正拳	格斗家	2	ws/bt_clw_clw/ws_s03	
+56	崩拳	格斗家	2	ws/bt_clw_clw/ws_s05	
+61	双掌打	格斗家	2	ws/bt_clw_clw/ws_s06	
+62	破坏神冲	格斗家	2	ability/clw_monk/abl007	
+65	真言	格斗家	2	ability/clw_monk/abl031	
+66	破碎拳	格斗家	2	ws/bt_clw_clw/ws_s11	
+69	震脚	武僧	20	ability/clw_monk/abl011	
+70	地烈劲	武僧	20	ws/bt_clw_clw/ws_s14	
+74	双龙脚	格斗家	2	ws/bt_clw_clw/ws_s04	
+75	精准刺	枪术师	4	ws/bt_2sp_emp/wsh001	
+78	贯通刺	枪术师	4	ws/bt_2sp_emp/wsh003	
+83	龙剑	枪术师	4	ability/2sp_dragoon/abl001	
+84	直刺	枪术师	4	ws/bt_2sp_emp/ws_s08	
+85	猛枪	枪术师	4	ability/2sp_dragoon/abl006	
+86	死天枪	龙骑士	22	ws/bt_2sp_emp/ws_s01	
+87	开膛枪	枪术师	4	ws/bt_2sp_emp/ws_s09	
+88	樱花怒放	枪术师	4	ws/bt_2sp_emp/ws_s02	
+90	贯穿尖	枪术师	4	ws/bt_2sp_emp/ws_s06	
+92	跳跃	龙骑士	22	ability/2sp_dragoon/abl028	
+94	回避跳跃	龙骑士	22	ability/2sp_dragoon/abl008	
+96	龙炎冲	龙骑士	22	ability/2sp_dragoon/abl004	
+97	强力射击	弓箭手	5	ws/bt_2bw_emp/wsh001	battle/magic_ran_start
+98	直线射击	弓箭手	5	ws/bt_2bw_emp/wsh002	battle/magic_ran_start
+100	毒咬箭	弓箭手	5	ws/bt_2bw_emp/wsh003	battle/magic_ran_start
+101	猛者强击	弓箭手	5	ability/2bw_bard/abl002	
+106	连珠箭	弓箭手	5	ws/bt_2bw_emp/ws_s02	battle/magic_ran_start
+107	纷乱箭	弓箭手	5	ability/2bw_bard/abl005	
+110	失血箭	弓箭手	5	ws/bt_2bw_emp/ws_s01	
+112	后跃射击	弓箭手	5	ws/bt_2bw_emp/ws_s06	
+113	风蚀箭	弓箭手	5	ws/bt_2bw_emp/ws_s08	battle/magic_ran_start
+114	贤者的叙事谣	吟游诗人	23	magic/2bw_bard/mgc008	battle/magic_sng_start
+116	军神的赞美歌	吟游诗人	23	magic/2bw_bard/mgc009	battle/magic_sng_start
+117	死亡箭雨	吟游诗人	23	ws/bt_2bw_emp/ws_s04	
+118	战斗之声	吟游诗人	23	ability/2bw_bard/abl007	
+119	飞石	幻术师	6	magic/cnj_white/stone	battle/magic_cnj_start
+120	治疗	幻术师	6	magic/cnj_white/carel	battle/magic_cnj_start
+121	疾风	幻术师	6	magic/cnj_white/aero	battle/magic_cnj_start
+124	医治	幻术师	6	magic/cnj_white/mgc022	battle/magic_cnj_start
+125	复活	幻术师	6	magic/cnj_white/raise	battle/magic_cnj_start
+127	坚石	幻术师	6	magic/cnj_white/stonela	battle/magic_cnj_start
+131	愈疗	白魔法师	24	magic/cnj_white/carelda	battle/magic_cnj_start
+132	烈风	幻术师	6	magic/cnj_white/aerola	battle/magic_cnj_start
+133	医济	幻术师	6	magic/cnj_white/carella	battle/magic_cnj_start
+135	救疗	幻术师	6	magic/cnj_white/carel2	battle/magic_cnj_start
+136	神速咏唱	白魔法师	24	ability/cnj_white/abl002	
+137	再生	白魔法师	24	magic/cnj_white/regene	battle/magic_wht_start
+139	神圣	白魔法师	24	magic/cnj_white/holy	battle/magic_wht_start
+140	天赐祝福	白魔法师	24	ability/cnj_white/abl005	
+141	火炎	咒术师	7	magic/thm_black/fire	battle/magic_thm_start
+142	冰结	咒术师	7	magic/thm_black/blizzard	battle/magic_thm_start
+144	闪雷	咒术师	7	magic/thm_black/thunder	battle/magic_thm_start
+147	烈炎	咒术师	7	magic/thm_black/firela	battle/magic_thm_start
+149	星灵移位	咒术师	7	ability/thm_black/abl002	
+152	爆炎	咒术师	7	magic/thm_black/firega	battle/magic_thm_start
+153	暴雷	黑魔法师	25	magic/thm_black/thunderga	battle/magic_thm_start
+154	冰封	黑魔法师	25	magic/thm_black/blizzarga	battle/magic_thm_start
+155	以太步	咒术师	7	ability/thm_black/abl008	
+156	崩溃	咒术师	7	magic/thm_black/photonstrike	battle/magic_thm_start
+157	魔罩	咒术师	7	ability/thm_black/abl009	battle/magic_thm_start
+158	魔泉	黑魔法师	25	ability/thm_black/abl003	
+159	玄冰	黑魔法师	25	magic/thm_black/freeze	battle/magic_blk_start
+162	核爆	黑魔法师	25	magic/thm_black/flare	battle/magic_blk_start
+163	毁灭	秘术师	26	magic/swl_summon/fieryblast	battle/magic_swl_start
+166	以太超流	学者	28	ability/swl_summon/abl012	
+167	能量吸收	学者	28	ability/swl_summon/abl013	
+172	毁坏	秘术师	26	magic/swl_summon/ruinla	battle/magic_swl_start
+173	复生	秘术师	26	magic/swl_summon/ressurection	battle/magic_swl_start
+181	溃烂爆发	秘术师	26	magic/swl_summon/plagueburst	
+185	鼓舞激励之策	学者	28	magic/swl_summon/succor2	battle/magic_sch_start
+186	士气高扬之策	学者	28	magic/swl_summon/mgc051	battle/magic_sch_start
+188	野战治疗阵	学者	28	ability/swl_summon/abl053	
+189	生命活性法	学者	28	ability/swl_summon/abl009	
+190	医术	学者	28	magic/swl_summon/swlcarel	battle/magic_swl_start
+197	铜墙铁盾	冒险者	0	limitbreak/lbk_tank_lv1	limitbreak/lbk_tank_start
+198	坚守要塞	冒险者	0	limitbreak/lbk_tank_lv2	limitbreak/lbk_tank_start
+199	终极堡垒	冒险者	0	limitbreak/lbk_tank_lv3	limitbreak/lbk_tank_start
+200	勇猛烈斩	冒险者	0	limitbreak/lbk_melee_lv1	limitbreak/lbk_melee_start
+201	刀光剑舞	冒险者	0	limitbreak/lbk_melee_lv2	limitbreak/lbk_melee_start
+202	最终天堂	冒险者	0	limitbreak/lbk_melee_lv3	limitbreak/lbk_finalheaven_start
+203	苍穹破碎	冒险者	0	limitbreak/lbk_caster_lv1	limitbreak/lbk_caster_start
+204	星体风暴	冒险者	0	limitbreak/lbk_caster_lv2	limitbreak/lbk_caster_start
+205	陨石流星	冒险者	0	limitbreak/lbk_caster_lv3	limitbreak/lbk_caster_start
+206	治愈微风	冒险者	0	limitbreak/lbk_healer_lv1	limitbreak/lbk_healer_start
+207	大地气息	冒险者	0	limitbreak/lbk_healer_lv2	limitbreak/lbk_healer_start
+208	生命鼓动	冒险者	0	limitbreak/lbk_healer_lv3	limitbreak/lbk_healer_start
+210	三角测量	园艺工	17	ability/no_mot_ability_mount	
+211	树木之声	园艺工	17	ability/no_mot_ability_mount	
+215	农夫之智	园艺工	17	gather/libura	
+218	环境探知	园艺工	17	gather/buff	
+220	环境探知II	园艺工	17	gather/buff	
+221	丛林之相	园艺工	17	ability/no_mot_ability_mount	
+222	天赐收成	园艺工	17	gather/buff	
+224	天赐收成II	园艺工	17	gather/buff	
+227	矿脉勘探	采矿工	16	ability/no_mot_ability_mount	
+228	大地勘察	采矿工	16	ability/no_mot_ability_mount	
+232	石工之理	采矿工	16	gather/libura	
+235	敏锐视野	采矿工	16	gather/buff	
+237	敏锐视野II	采矿工	16	gather/buff	
+238	山岳之相	采矿工	16	ability/no_mot_ability_mount	
+239	莫非王土	采矿工	16	gather/buff	
+241	莫非王土II	采矿工	16	gather/buff	
+260	阔步	刻木匠	8	craft/buff	
+261	阔步	锻铁匠	9	craft/buff	
+262	阔步	铸甲匠	10	craft/buff	
+263	阔步	雕金匠	11	craft/buff	
+264	阔步	裁衣匠	13	craft/buff	
+265	阔步	制革匠	12	craft/buff	
+266	阔步	炼金术士	14	craft/buff	
+267	阔步	烹调师	15	craft/buff	
+268	以小钓大II	捕鱼人	18	ability/no_mot_ability	
+269	双重提钩	捕鱼人	18	ability/no_mot_ability	
+272	高产II	采矿工	16	gather/buff	
+273	丰收II	园艺工	17	gather/buff	
+280	十二神加护	采矿工	16	gather/buff	
+282	十二神加护	园艺工	17	gather/buff	
+288	选饵	捕鱼人	18	ability/no_mot_ability	
+289	抛竿	捕鱼人	18	ability/no_mot_ability	
+290	树木之声II	园艺工	17	ability/no_mot_ability_mount	
+291	大地勘察II	采矿工	16	ability/no_mot_ability_mount	
+294	环境探知III	园艺工	17	gather/buff	
+295	敏锐视野III	采矿工	16	gather/buff	
+296	提钩	捕鱼人	18	ability/no_mot_ability	
+297	以小钓大	捕鱼人	18	ability/no_mot_ability	
+299	中断	捕鱼人	18	ability/no_mot_ability	
+300	放生	捕鱼人	18	ability/no_mot_ability	
+303	隐行	采矿工	16	ability/no_mot_ability_mount	
+304	隐行	园艺工	17	ability/no_mot_ability_mount	
+305	隐行	捕鱼人	18	ability/no_mot_ability_mount	
+1128	魔导加农炮	冒险者	0	mount_sp/d0002/mon_sp001	battle/mon_sp_a_start
+1129	魔导光子炮	冒险者	0	mount_sp/d0002/mon_sp002	battle/mon_sp_a_start
+1134	炮击	冒险者	0	normal/cannon_1	normal/aettouch_start
+1437	炮击	冒险者	0	normal/cannon_1	normal/aettouch_start
+1694	解读	冒险者	0	normal/decifer_exec	normal/decifer_start
+1695	挖掘	冒险者	0	normal/treasure_search	
+1764	烈火吐息	冒险者	0	mount_sp/m0046/mon_sp001	battle/mon_sp_a_start
+1765	喷嚏	冒险者	0	mount_sp/m0054/mon_sp001	battle/mon_sp_a_start
+1766	投掷	冒险者	0	normal/event_action_bakuhakemuri	normal/item_start
+2135	垂钓之光	捕鱼人	18	ability/no_mot_ability	
+2136	学习秘籍配方	冒险者	0	normal/item_end	normal/item_start
+2237	炮击	冒险者	0	normal/cannon_2	normal/aettouch_start
+2238	雷弹	冒险者	0	normal/cannon_2	normal/aettouch_start
+2240	双刃旋	双剑师	29	ws/bt_dgr_dgr/ws_s01	
+2241	残影	双剑师	29	ability/dgr_ninja/abl001	
+2242	绝风	双剑师	29	ws/bt_dgr_dgr/ws_s02	
+2245	隐遁	双剑师	29	ability/dgr_ninja/abl003	
+2246	断绝	忍者	30	ability/dgr_ninja/abl004	
+2247	飞刀	双剑师	29	ws/bt_dgr_dgr/ws_s09	
+2248	夺取	双剑师	29	ability/dgr_ninja/abl014	
+2254	血雨飞花	双剑师	29	ability/dgr_ninja/abl018	
+2255	旋风刃	双剑师	29	ws/bt_dgr_dgr/ws_s05	
+2258	攻其不备	双剑师	29	ws/bt_dgr_dgr/ws_s06	
+2259	天之印	忍者	30	ability/dgr_ninja/abl011	
+2260	忍术	忍者	30	ability/dgr_ninja/abl008	
+2261	地之印	忍者	30	ability/dgr_ninja/abl012	
+2262	缩地	忍者	30	ability/dgr_ninja/abl009	
+2263	人之印	忍者	30	ability/dgr_ninja/abl013	
+2264	生杀予夺	忍者	30	ability/dgr_ninja/abl010	
+2265	风魔手里剑	冒险者	0	magic/dgr_ninja/syuriken	
+2266	火遁之术	冒险者	0	magic/dgr_ninja/katon	
+2267	雷遁之术	冒险者	0	magic/dgr_ninja/raiton	
+2268	冰遁之术	冒险者	0	magic/dgr_ninja/hyoton	
+2269	风遁之术	冒险者	0	magic/dgr_ninja/mgc001	
+2270	土遁之术	冒险者	0	magic/dgr_ninja/doton	
+2271	水遁之术	冒险者	0	magic/dgr_ninja/suiton	
+2272	通灵之术	冒险者	0	magic/dgr_ninja/kuchiyose	
+2360	魔咒	冒险者	0	season/action01	
+2434	魔导加农炮	冒险者	0	mount_sp/d0002/mon_sp001	battle/mon_sp_a_start
+2435	魔导光子炮	冒险者	0	mount_sp/d0002/mon_sp002	battle/mon_sp_a_start
+2436	烈火吐息	冒险者	0	mount_sp/m0046/mon_sp001	battle/mon_sp_a_start
+2437	喷嚏	冒险者	0	mount_sp/m0054/mon_sp001	battle/mon_sp_a_start
+2443	蛙火	冒险者	0	mon_sp/m0214/mon_sp001	
+2620	喷水	冒险者	0	mount_sp/m0046/mon_sp002	battle/mon_sp_a_start
+2621	秘制爆竹	冒险者	0	normal/throw_firecrackers	normal/item_start
+2630	炮击	冒险者	0	normal/cannon_3	normal/aettouch_start
+2645	重生之境	冒险者	0	normal/item_sp01_end	normal/item_sp01_start
+2864	车式浮空炮塔	机工士	31	ability/2gn_machin/abl008	
+2866	分裂弹	机工士	31	ws/bt_2gn_emp/ws_s01	
+2868	独头弹	机工士	31	ws/bt_2gn_emp/ws_s03	
+2870	散射	机工士	31	ws/bt_2gn_emp/ws_s05	
+2872	热弹	机工士	31	ws/bt_2gn_emp/ws_s07	
+2873	狙击弹	机工士	31	ws/bt_2gn_emp/ws_s08	
+2874	虹吸弹	机工士	31	ws/bt_2gn_emp/ws_s14	
+2876	整备	机工士	31	ability/2gn_machin/abl002	
+2878	野火	机工士	31	ability/2gn_machin/abl004	
+2887	武装解除	机工士	31	ability/2gn_machin/abl015	
+2890	弹射	机工士	31	ability/2gn_machin/abl018	
+2894	同心戒指	冒险者	0	normal/telepo_sp1	normal/magic_cmn_start
+3139	河童拳	冒险者	0	trans_sp/m0216/trans_sp001	
+3203	雷遁之术	冒险者	0	human_sp/c0101/human_sp020	battle/mon_sp_a_start
+3204	雷遁之术	冒险者	0	mon_sp/gimmick/qib_nin_gtkougeki	
+3207	鬼束之术	冒险者	0	human_sp/c0101/human_sp022	battle/mon_sp_a_start
+3377	炮击	冒险者	0	normal/cannon_1	normal/aettouch_start
+3378	雷弹	冒险者	0	normal/cannon_4	normal/aettouch_start
+3379	粘着弹	冒险者	0	normal/cannon_5	normal/aettouch_start
+3504	怒喊	冒险者	0	season/action02	
+3506	低压电流	冒险者	0	mount_sp/m0105/mon_sp001	battle/mon_sp_a_start
+3538	沥血剑	骑士	19	ws/bt_swd_sld/ws_s09	
+3539	王权剑	骑士	19	ws/bt_swd_sld/ws_s10	
+3540	圣光幕帘	骑士	19	ability/swd_knight/abl030	
+3541	深仁厚泽	骑士	19	magic/swd_knight/mgc001	battle/magic_pld_start
+3542	盾阵	骑士	19	ability/swd_knight/abl017	
+3543	斗魂旋风脚	冒险者	0	ability/clw_monk/abl029	
+3545	苍气炮	冒险者	0	ability/clw_monk/abl016	
+3547	阴阳斗气斩	武僧	20	ability/clw_monk/abl018	
+3549	裂石飞环	战士	21	ws/bt_2ax_emp/ws_s09	
+3550	地毁人亡	战士	21	ws/bt_2ax_emp/ws_s10	
+3551	原初的直觉	战士	21	ability/2ax_warrior/abl017	
+3552	泰然自若	战士	21	ability/2ax_warrior/abl018	
+3554	龙牙龙爪	龙骑士	22	ws/bt_2sp_emp/ws_s10	
+3555	武神枪	龙骑士	22	ability/2sp_dragoon/abl013	
+3556	龙尾大回旋	龙骑士	22	ws/bt_2sp_emp/ws_s11	
+3557	战斗连祷	龙骑士	22	ability/2sp_dragoon/abl014	
+3558	九天连箭	吟游诗人	23	ws/bt_2bw_emp/ws_s10	battle/magic_ran_start
+3559	放浪神的小步舞曲	吟游诗人	23	magic/2bw_bard/mgc010	battle/magic_sng_start
+3560	伶牙俐齿	吟游诗人	23	ability/2bw_bard/abl013	battle/magic_ran_start
+3561	光阴神的礼赞凯歌	吟游诗人	23	magic/2bw_bard/mgc002	
+3562	侧风诱导箭	吟游诗人	23	ability/2bw_bard/abl014	
+3563	强甲破点突	忍者	30	ws/bt_dgr_dgr/ws_s10	
+3566	梦幻三段	忍者	30	ability/dgr_ninja/abl021	
+3568	垒石	白魔法师	24	magic/cnj_white/mgc001	battle/magic_cnj_start
+3569	庇护所	白魔法师	24	ability/cnj_white/abl022	
+3570	神名	白魔法师	24	ability/cnj_white/abl009	
+3571	法令	白魔法师	24	ability/cnj_white/abl028	
+3573	黑魔纹	黑魔法师	25	ability/thm_black/abl012	
+3576	冰澈	黑魔法师	25	magic/thm_black/mgc001	battle/magic_blk_start
+3577	炽炎	黑魔法师	25	magic/thm_black/mgc002	battle/magic_blk_start
+3578	痛苦核爆	召唤师	27	ability/swl_summon/abl020	
+3579	毁荡	召唤师	27	magic/swl_summon/mgc001	battle/magic_sum_start
+3581	龙神附体	召唤师	27	ability/swl_summon/abl026	
+3582	死星核爆	冒险者	0	ability/swl_summon/abl027	
+3583	不屈不挠之策	学者	28	ability/swl_summon/abl073	
+3584	气炎法	学者	28	magic/swl_summon/mgc002	battle/magic_sch_start
+3585	展开战术	学者	28	ability/swl_summon/abl054	
+3586	应急战术	学者	28	ability/swl_summon/abl025	
+3587	转化	学者	28	ability/swl_summon/abl024	
+3594	吉星	占星术士	33	magic/2gl_astro/mgc001	battle/magic_ast_start
+3595	吉星相位	占星术士	33	magic/2gl_astro/mgc002	battle/magic_ast_start
+3596	凶星	占星术士	33	magic/2gl_astro/mgc003	battle/magic_ast_start
+3598	灾星	占星术士	33	magic/2gl_astro/mgc005	battle/magic_ast_start
+3599	烧灼	占星术士	33	magic/2gl_astro/mgc006	battle/magic_ast_start
+3600	阳星	占星术士	33	magic/2gl_astro/mgc029	battle/magic_ast_start
+3601	阳星相位	占星术士	33	magic/2gl_astro/mgc030	battle/magic_ast_start
+3603	生辰	占星术士	33	magic/2gl_astro/mgc010	battle/magic_ast_start
+3606	光速	占星术士	33	ability/2gl_astro/abl008	
+3608	炽灼	占星术士	33	magic/2gl_astro/mgc012	battle/magic_ast_start
+3610	福星	占星术士	33	magic/2gl_astro/mgc011	battle/magic_ast_start
+3612	星位合图	占星术士	33	ability/2gl_astro/abl011	
+3613	命运之轮	占星术士	33	ability/2gl_astro/abl032	
+3614	先天禀赋	占星术士	33	ability/2gl_astro/abl013	
+3615	重力	占星术士	33	magic/2gl_astro/mgc021	battle/magic_lgi_start
+3617	重斩	暗黑骑士	32	ws/bt_2sw_emp/ws_s01	
+3621	释放	暗黑骑士	32	ability/2sw_dark/abl002	
+3623	吸收斩	暗黑骑士	32	ws/bt_2sw_emp/ws_s04	
+3624	伤残	暗黑骑士	32	ability/2sw_dark/abl001	
+3625	嗜血	暗黑骑士	32	ability/2sw_dark/abl005	
+3629	深恶痛绝	暗黑骑士	32	ability/2sw_dark/abl010	
+3632	噬魂斩	暗黑骑士	32	ws/bt_2sw_emp/ws_s05	
+3634	弃明投暗	暗黑骑士	32	ability/2sw_dark/abl009	
+3636	暗影墙	暗黑骑士	32	ability/2sw_dark/abl004	
+3638	行尸走肉	暗黑骑士	32	ability/2sw_dark/abl020	
+3639	腐秽大地	暗黑骑士	32	ability/2sw_dark/abl033	
+3641	吸血深渊	暗黑骑士	32	ability/2sw_dark/abl017	
+3643	精雕怒斩	暗黑骑士	32	ability/2sw_dark/abl019	
+4062	重压弹	冒险者	0	mount_sp/m0257/mon_sp002	
+4063	电压弹	冒险者	0	mount_sp/m0257/mon_sp004	
+4064	强酸弹	冒险者	0	mount_sp/m0257/mon_sp003	
+4065	电磁石	冒险者	0	mount_sp/m0257/mon_sp005	
+4066	雾散爆发	冒险者	0	mount_sp/m0257/mon_sp006	
+4067	充电	冒险者	0	mount_sp/m0257/mon_sp007	
+4072	明晰视野	采矿工	16	gather/buff	
+4073	高产	采矿工	16	gather/buff	
+4081	登山者的眼力	采矿工	16	gather/libura	
+4086	植被专精	园艺工	17	gather/buff	
+4087	丰收	园艺工	17	gather/buff	
+4095	开拓者的眼力	园艺工	17	gather/libura	
+4100	钓组	捕鱼人	18	ability/no_mot_ability_mount	
+4101	收藏品采集	捕鱼人	18	ability/no_mot_ability_mount	
+4102	耐心	捕鱼人	18	ability/no_mot_ability	
+4103	强力提钩	捕鱼人	18	ability/no_mot_ability	
+4104	撒饵	捕鱼人	18	ability/no_mot_ability	
+4105	鱼眼	捕鱼人	18	ability/no_mot_ability	
+4106	耐心II	捕鱼人	18	ability/no_mot_ability	
+4179	精准提钩	捕鱼人	18	ability/no_mot_ability	
+4238	冲天怒射	冒险者	0	limitbreak/lbk_range_lv1	limitbreak/lbk_range_start
+4239	亡命暴徒	冒险者	0	limitbreak/lbk_range_lv2	limitbreak/lbk_range_start
+4240	原初大地	冒险者	0	limitbreak/lbk_warrior_lv3	limitbreak/lbk_tank_start
+4241	暗黑之力	冒险者	0	limitbreak/lbk_dark_lv3	limitbreak/lbk_tank_start
+4242	苍穹龙炎	冒险者	0	limitbreak/lbk_dragoon_lv3	limitbreak/lbk_dragoon_start
+4243	月遁血祭	冒险者	0	limitbreak/lbk_ninja_lv3	limitbreak/lbk_ninja_start
+4244	射手天箭	冒险者	0	limitbreak/lbk_bard_lv3	limitbreak/lbk_bard_start
+4245	卫星光束	冒险者	0	limitbreak/lbk_machine_lv3	limitbreak/lbk_machine_start
+4246	万亿核爆	冒险者	0	limitbreak/lbk_summon_lv3	limitbreak/lbk_summon_start
+4247	天使之羽	冒险者	0	limitbreak/lbk_scholar_lv3	limitbreak/lbk_scholar_start
+4248	星天开门	冒险者	0	limitbreak/lbk_astro_lv3	limitbreak/lbk_astro_start
+4262	演武	武僧	20	ability/clw_monk/abl019	
+4271	炮击	冒险者	0	mon_sp/m0167/mon_sp001	
+4574	掌握	刻木匠	8	craft/buff	
+4575	掌握	锻铁匠	9	craft/buff	
+4576	掌握	铸甲匠	10	craft/buff	
+4577	掌握	雕金匠	11	craft/buff	
+4578	掌握	制革匠	12	craft/buff	
+4579	掌握	裁衣匠	13	craft/buff	
+4580	掌握	炼金术士	14	craft/buff	
+4581	掌握	烹调师	15	craft/buff	
+4583	突风	冒险者	0	mount_sp/m0236/mon_sp001	
+4584	突风	冒险者	0	mount_sp/m0236/mon_sp001	
+4585	踩踏	冒险者	0	mount_sp/m0440/mon_sp001	battle/mon_sp_a_start
+4586	踩踏	冒险者	0	mount_sp/m0440/mon_sp001	
+4589	大地的恩惠	采矿工	16	gather/buff	
+4590	大地的恩惠	园艺工	17	gather/buff	
+4592	清扫魔咒	冒险者	0	mount_sp/m0292/mon_sp001	
+4595	拍击水面	捕鱼人	18	ability/no_mot_ability	
+4596	专一垂钓	捕鱼人	18	ability/no_mot_ability	
+4631	俭约	刻木匠	8	craft/buff	
+4632	俭约	锻铁匠	9	craft/buff	
+4633	俭约	铸甲匠	10	craft/buff	
+4634	俭约	雕金匠	11	craft/buff	
+4635	俭约	制革匠	12	craft/buff	
+4636	俭约	裁衣匠	13	craft/buff	
+4637	俭约	炼金术士	14	craft/buff	
+4638	俭约	烹调师	15	craft/buff	
+4639	长期俭约	刻木匠	8	craft/buff	
+4640	长期俭约	锻铁匠	9	craft/buff	
+4641	长期俭约	铸甲匠	10	craft/buff	
+4642	长期俭约	雕金匠	11	craft/buff	
+4643	长期俭约	制革匠	12	craft/buff	
+4644	长期俭约	裁衣匠	13	craft/buff	
+4800	雾散爆发	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi	
+4913	重压弹	冒险者	0	mount_sp/m0257/mon_sp002	
+4914	电压弹	冒险者	0	mount_sp/m0257/mon_sp004	
+4915	强酸弹	冒险者	0	mount_sp/m0257/mon_sp003	
+4916	电磁石	冒险者	0	mount_sp/m0257/mon_sp005	
+4917	充电	冒险者	0	mount_sp/m0257/mon_sp007	
+4930	清扫魔咒	冒险者	0	mount_sp/m0292/mon_sp001	
+4931	突风	冒险者	0	mount_sp/m0234/mon_sp001	
+4976	空战机动	冒险者	0	mount_sp/m0060/mon_sp001	battle/mon_sp_a_start
+4977	雷遁之术	冒险者	0	human_sp/c0101/human_sp020	battle/mon_sp_a_start
+5069	雷遁之术	冒险者	0	mon_sp/gimmick/qib_nin_gtkougeki	
+5097	任务道具	冒险者	0	normal/item_end	normal/item_start
+5136	满天繁星	冒险者	0	normal/item_sp02	
+5199	攻击	冒险者	0		battle/idle
+5475	殴打	冒险者	0	mon_sp/m0183/mon_sp007	
+5476	药物排出	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+5477	飞翼斩	冒险者	0	mon_sp/m0007/mon_sp001	
+5872	散播	冒险者	0	mount_sp/m0306/mon_sp001	
+5874	电磁石	冒险者	0	mount_sp/m0257/mon_sp005	
+6143	喷水	冒险者	0	mount_sp/m0046/mon_sp002	battle/mon_sp_a_start
+6259	魔陶器：咒印解除	冒险者	0	pc_contentsaction/item01	
+6260	魔陶器：全景	冒险者	0	pc_contentsaction/item02	
+6262	魔陶器：强化自身	冒险者	0	pc_contentsaction/item03	
+6263	魔陶器：强化防御	冒险者	0	pc_contentsaction/item04	
+6264	魔陶器：宝箱增加	冒险者	0	pc_contentsaction/item05	
+6265	魔陶器：减少敌人	冒险者	0	pc_contentsaction/item06	
+6266	魔陶器：改变敌人	冒险者	0	pc_contentsaction/item07	
+6268	魔陶器：运气上升	冒险者	0	pc_contentsaction/item09	
+6269	魔陶器：形态变化	冒险者	0	pc_contentsaction/item10	
+6270	魔陶器：魔法效果解除	冒险者	0	pc_contentsaction/item11	
+6271	魔陶器：曼提克化	冒险者	0	pc_contentsaction/item12	
+6272	魔陶器：梦魔化	冒险者	0	pc_contentsaction/item12	
+6273	殴打	冒险者	0	mon_sp/m0183/mon_sp007	
+6274	虚空烈炎	冒险者	0	magic/thm_black/firela	battle/magic_thm_start
+6293	咆哮	冒险者	0	mount_sp/m0312/mon_sp001	
+6294	绒毛散播	冒险者	0	mount_sp/m0337/mon_sp001	
+6295	突风	冒险者	0	mount_sp/m0234/mon_sp001	
+6296	散播	冒险者	0	mount_sp/m0306/mon_sp001	
+6297	绒毛散播	冒险者	0	mount_sp/m0337/mon_sp001	
+6324	莫古莫古回旋	冒险者	0	mount_sp/m0341/mon_sp001	
+6868	魔陶器：重生	冒险者	0	pc_contentsaction/item13	
+6869	魔陶器：基路伯化	冒险者	0	pc_contentsaction/item12	
+6870	魔陶器：感知宝藏	冒险者	0	pc_contentsaction/item14	
+6871	天罚	冒险者	0	mon_sp/[SKL_ID]/mon_sp023	battle/mon_sp_a_start
+7381	全蚀斩	剑术师	1	ws/bt_swd_sld/ws_s11	
+7382	干预	骑士	19	ability/swd_knight/abl018	
+7383	安魂祈祷	骑士	19	ability/swd_knight/abl019	
+7384	圣灵	骑士	19	magic/swd_knight/mgc002	battle/magic_pld_start
+7385	武装戍卫	骑士	19	ability/swd_knight/abl020_start	
+7386	猛攻	战士	21	ability/2ax_warrior/abl019	
+7387	动乱	战士	21	ability/2ax_warrior/abl020	
+7388	摆脱	战士	21	ability/2ax_warrior/abl021	
+7389	原初的解放	战士	21	ability/2ax_warrior/abl022	
+7390	血乱	暗黑骑士	32	ability/2sw_dark/abl023	
+7391	寂灭	暗黑骑士	32	ws/bt_2sw_emp/ws_s08	
+7392	血溅	暗黑骑士	32	ws/bt_2sw_emp/ws_s09	
+7393	至黑之夜	暗黑骑士	32	ability/2sw_dark/abl024	
+7394	金刚极意	武僧	20	ability/clw_monk/abl020	
+7395	红莲极意	武僧	20	ability/clw_monk/abl022	
+7396	义结金兰	武僧	20	ability/clw_monk/abl023	
+7397	音速刺	龙骑士	22	ability/2sp_dragoon/abl015	
+7399	幻象冲	龙骑士	22	ability/2sp_dragoon/abl017	
+7400	死者之岸	龙骑士	22	ability/2sp_dragoon/abl018	
+7401	通灵之术·大虾蟆	忍者	30	ability/dgr_ninja/abl023	
+7402	六道轮回	忍者	30	ability/dgr_ninja/abl024	
+7403	天地人	忍者	30	ability/dgr_ninja/abl025	
+7404	完美音调	吟游诗人	23	ability/2bw_bard/abl020	
+7405	行吟	吟游诗人	23	ability/2bw_bard/abl016	
+7406	烈毒咬箭	吟游诗人	23	ws/bt_2bw_emp/ws_s11	
+7407	狂风蚀箭	吟游诗人	23	ws/bt_2bw_emp/ws_s12	
+7408	大地神的抒情恋歌	吟游诗人	23	ability/2bw_bard/abl019	
+7409	辉煌箭	吟游诗人	23	ws/bt_2bw_emp/ws_s13	
+7410	热冲击	机工士	31	ws/bt_2gn_emp/ws_s10	
+7411	热分裂弹	机工士	31	ws/bt_2gn_emp/ws_s11	
+7412	热独头弹	机工士	31	ws/bt_2gn_emp/ws_s12	
+7413	热狙击弹	机工士	31	ws/bt_2gn_emp/ws_s13	
+7414	枪管加热	机工士	31	ability/2gn_machin/abl022	
+7415	超档车式炮塔	机工士	31	ability/2gn_machin/abl023	
+7418	火焰喷射器	机工士	31	ability/2gn_machin/abl025_start	
+7419	魔纹步	黑魔法师	25	ability/thm_black/abl015	
+7420	霹雷	黑魔法师	25	magic/thm_black/mgc004	battle/magic_blk_start
+7421	三连咏唱	黑魔法师	25	ability/thm_black/abl016	
+7422	秽浊	黑魔法师	25	magic/thm_black/mgc005	battle/magic_blk_start
+7426	毁绝	召唤师	27	magic/swl_summon/mgc021	battle/magic_sum_start
+7427	龙神召唤	召唤师	27	ability/swl_summon/abl032	
+7429	龙神迸发	召唤师	27	ability/swl_summon/abl033	
+7430	无中生有	白魔法师	24	ability/cnj_white/abl011	
+7431	崩石	白魔法师	24	magic/cnj_white/mgc003	battle/magic_wht_start
+7432	神祝祷	白魔法师	24	ability/cnj_white/abl012	
+7433	全大赦	白魔法师	24	ability/cnj_white/abl013	
+7434	深谋远虑之策	学者	28	ability/swl_summon/abl028	
+7435	魔炎法	学者	28	magic/swl_summon/mgc007	battle/magic_sch_start
+7436	连环计	学者	28	ability/swl_summon/abl030	
+7437	以太契约	学者	28	ability/swl_summon/abl031	
+7439	地星	占星术士	33	ability/2gl_astro/abl018	
+7442	祸星	占星术士	33	magic/2gl_astro/mgc014	battle/magic_ast_start
+7444	王冠之领主	冒险者	0	ability/2gl_astro/play09	
+7445	王冠之贵妇	冒险者	0	ability/2gl_astro/play10	
+7447	震雷	咒术师	7	magic/thm_black/mgc003	battle/magic_thm_start
+7477	刃风	武士	34	ws/bt_2kt_emp/ws_s01	
+7478	阵风	武士	34	ws/bt_2kt_emp/ws_s02	
+7479	士风	武士	34	ws/bt_2kt_emp/ws_s03	
+7480	雪风	武士	34	ws/bt_2kt_emp/ws_s04	
+7481	月光	武士	34	ws/bt_2kt_emp/ws_s05	
+7482	花车	武士	34	ws/bt_2kt_emp/ws_s06	
+7483	风雅	武士	34	ws/bt_2kt_emp/ws_s07	
+7484	满月	武士	34	ws/bt_2kt_emp/ws_s08	
+7485	樱花	武士	34	ws/bt_2kt_emp/ws_s09	
+7486	燕飞	武士	34	ws/bt_2kt_emp/ws_s10	
+7487	纷乱雪月花	冒险者	0	magic/2kt_samrai/mgc001	battle/magic_sam_start
+7488	天下五剑	冒险者	0	magic/2kt_samrai/mgc010	battle/magic_sam_start
+7489	彼岸花	冒险者	0	magic/2kt_samrai/mgc003	battle/magic_sam_start
+7490	必杀剑·震天	武士	34	ability/2kt_samrai/abl001	
+7491	必杀剑·九天	武士	34	ability/2kt_samrai/abl002	
+7492	必杀剑·晓天	武士	34	ability/2kt_samrai/abl003	
+7493	必杀剑·夜天	武士	34	ability/2kt_samrai/abl004	
+7495	叶隐	武士	34	ability/2kt_samrai/abl006	
+7496	必杀剑·红莲	武士	34	ability/2kt_samrai/abl020	
+7497	默想	武士	34	ability/2kt_samrai/abl008_start	
+7498	心眼	武士	34	ability/2kt_samrai/abl009	
+7499	明镜止水	武士	34	ability/2kt_samrai/abl010	
+7503	摇荡	赤魔法师	35	magic/2rp_redmage/mgc001	battle/magic_rdm_start
+7504	回刺	赤魔法师	35	ws/bt_2rp_emp/ws_s01	
+7505	赤闪雷	赤魔法师	35	magic/2rp_redmage/mgc004	battle/magic_rdm_start
+7506	短兵相接	赤魔法师	35	ability/2rp_redmage/abl001	
+7507	赤疾风	赤魔法师	35	magic/2rp_redmage/mgc005	battle/magic_rdm_start
+7509	散碎	赤魔法师	35	magic/2rp_redmage/mgc007	battle/magic_rdm_start
+7510	赤火炎	赤魔法师	35	magic/2rp_redmage/mgc008	battle/magic_rdm_start
+7511	赤飞石	赤魔法师	35	magic/2rp_redmage/mgc009	battle/magic_rdm_start
+7512	交击斩	赤魔法师	35	ws/bt_2rp_emp/ws_s02	
+7513	划圆斩	赤魔法师	35	ws/bt_2rp_emp/ws_s04	
+7514	赤治疗	赤魔法师	35	magic/2rp_redmage/mgc010	battle/magic_rdm_start
+7515	移转	赤魔法师	35	ability/2rp_redmage/abl002	
+7516	连攻	赤魔法师	35	ws/bt_2rp_emp/ws_s03	
+7517	飞刺	赤魔法师	35	ability/2rp_redmage/abl003	
+7518	促进	赤魔法师	35	ability/2rp_redmage/abl004	
+7519	六分反击	赤魔法师	35	ability/2rp_redmage/abl005	
+7520	鼓励	赤魔法师	35	ability/2rp_redmage/abl006	
+7521	魔元化	赤魔法师	35	ability/2rp_redmage/abl007	
+7523	赤复活	赤魔法师	35	magic/2rp_redmage/mgc011	battle/magic_rdm_start
+7524	震荡	赤魔法师	35	magic/2rp_redmage/mgc002	battle/magic_rdm_start
+7525	赤核爆	冒险者	0	magic/2rp_redmage/mgc020	battle/magic_rdm_start
+7526	赤神圣	冒险者	0	magic/2rp_redmage/mgc021	battle/magic_rdm_start
+7527	魔回刺	冒险者	0	ws/bt_2rp_emp/ws_s05	
+7528	魔交击斩	冒险者	0	ws/bt_2rp_emp/ws_s06	
+7529	魔连攻	冒险者	0	ws/bt_2rp_emp/ws_s07	
+7530	魔划圆斩·一段	冒险者	0	ws/bt_2rp_emp/ws_s08	
+7599	陆行鸟玩偶	冒险者	0	mount_sp/m0402/mon_sp001	
+7600	陆行鸟玩偶	冒险者	0	mount_sp/m0402/mon_sp001	
+7619	魔导加农炮	冒险者	0	mount_sp/d0002/mon_sp001	battle/mon_sp_a_start
+7620	魔导光子炮	冒险者	0	mount_sp/d0002/mon_sp002	battle/mon_sp_a_start
+7621	魔导加农散弹炮	冒险者	0	mount_sp/d0002/mon_sp004	battle/mon_sp_a_start
+7622	高功率魔导加农炮	冒险者	0	mount_sp/d0002/mon_sp005	battle/mon_sp_a_start
+7632	刺鱼	捕鱼人	18	ability/no_mot_ability	
+7861	生者必灭	冒险者	0	limitbreak/lbk_samurai_lv3	limitbreak/lbk_samurai_start
+7862	赤红灾变	冒险者	0	limitbreak/lbk_redmage_lv3	limitbreak/lbk_redmage_start
+7869	融光解除	冒险者	0	ability/no_mot_ability	
+7903	鱼群测定	捕鱼人	18	ability/no_mot_ability_mount	
+7904	鲨鱼之眼	捕鱼人	18	ability/no_mot_ability_mount	
+7905	鲨鱼之眼II	捕鱼人	18	ability/no_mot_ability_mount	
+7906	熟练技巧	捕鱼人	18	harpoon/swim_under_hr_buff	
+7909	嘉惠	捕鱼人	18	harpoon/swim_under_hr_buff	
+7910	打捞	捕鱼人	18	ability/no_mot_ability_mount	
+7911	海洋之相	捕鱼人	18	ability/no_mot_ability_mount	
+7962	魔导脉冲弹	冒险者	0	mon_sp/gimmick/g3d1_cyuboss1_gimmick01	normal/aettouch_start
+8324	星体爆轰	冒险者	0	ability/2gl_astro/abl019	
+8395	终结山脉	冒险者	0	limitbreak/lbk_warrior_lv3	limitbreak/lbk_melee_start
+8623	水泡	冒险者	0	mount_sp/m0296/mon_sp001	
+8624	魔导脉冲	冒险者	0	mount_sp/d0002/mon_sp006	battle/mon_sp_a_start
+8625	魔导闪雷	冒险者	0	mount_sp/d0002/mon_sp007	battle/mon_sp_a_start
+9012	火遁之术	冒险者	0	magic/dgr_ninja/katon	
+9015	卸下枪管	冒险者	0	ability/no_mot_ability	
+9035	河童拳	冒险者	0	trans_sp/m0216/trans_sp001	
+9143	天下五剑	冒险者	0	magic/2kt_samrai/mgc002	battle/magic_sam_start
+9294	雷剑气	冒险者	0	mon_sp/gimmick/qib_nin_gtkougeki	
+9301	雷遁之术	冒险者	0	human_sp/c0101/human_sp020	battle/mon_sp_a_start
+9302	雷遁之术	冒险者	0	mon_sp/gimmick/qib_nin_gtkougeki	
+9372	超档象式炮塔	冒险者	0	ability/2gn_machin/abl024	
+9775	雾散爆发	冒险者	0	mon_sp/d1015/mon_sp002	battle/mon_sp_b_start
+9786	雪人	冒险者	0	mon_sp/[SKL_ID]/mon_sp001	battle/mon_sp_a_start
+9823	爆炸岩	冒险者	0	mon_sp/[SKL_ID]/mon_sp006	battle/mon_sp_a_start
+9971	制导	冒险者	0	mon_sp/[SKL_ID]/mon_sp017	battle/mon_sp_a_start
+9972	猎隼冲击	冒险者	0	mon_sp/gimmick/d2p1_boss1_gimmick01	
+9973	回旋碎踢	冒险者	0	mon_sp/[SKL_ID]/mon_sp018	
+9974	交叉光剑	冒险者	0	mon_sp/[SKL_ID]/mon_sp019	battle/mon_sp_c_start
+9975	超大型导弹	冒险者	0	mon_sp/[SKL_ID]/mon_sp014	battle/mon_sp_a_start
+9976	大爆炸	冒险者	0	mon_sp/gimmick/d2p1_boss2_gimmick01	
+9977	喷射蒸汽	冒险者	0	mon_sp/[SKL_ID]/mon_sp015	battle/mon_sp_b_start
+9978	大火炎放射	冒险者	0	mon_sp/[SKL_ID]/mon_sp012	battle/mon_sp_a_start
+9979	双重火箭飞拳	冒险者	0	mon_sp/[SKL_ID]/mon_sp013	
+9980	巨型光束炮	冒险者	0	mon_sp/[SKL_ID]/mon_sp014	battle/mon_sp_d_start
+9981	装填青磷水	冒险者	0	mon_sp/gimmick/d2p1_energycharge_gimmick01	
+9982	炮击	冒险者	0	mount_sp/m0448/mon_sp001	battle/mon_sp_a_start
+9996	攻击	冒险者	0	mon_sp/d1015/mon_sp001	
+10001	怒火冲天	冒险者	0	limitbreak/lbk_platoon_lv2	limitbreak/lbk_platoon_start
+10013	吸引	冒险者	0	mount_sp/m0296/mon_sp002	
+10014	吸引	冒险者	0	mount_sp/m0296/mon_sp002	
+10019	礼花筒	冒险者	0	mount_sp/m0176/mon_sp001	battle/mon_sp_a_start
+10020	礼花筒	冒险者	0	mount_sp/m0176/mon_sp001	
+10057	降落	冒险者	0	mon_sp/common/mon_sph034	
+10061	返回	冒险者	0	normal/dejon	normal/magic_cmn_start
+10270	鼻息	冒险者	0	mount_sp/m0467/mon_sp001	
+10713	声援小红	冒险者	0	pc_contentsaction/psyllium3	
+10714	声援小黄	冒险者	0	pc_contentsaction/psyllium2	
+10715	声援小蓝	冒险者	0	pc_contentsaction/psyllium1	
+10716	声援小红	冒险者	0	pc_contentsaction/psyllium3	
+10717	声援小黄	冒险者	0	pc_contentsaction/psyllium2	
+10718	声援小蓝	冒险者	0	pc_contentsaction/psyllium1	
+10894	星体风暴	冒险者	0	limitbreak/lbk_caster_lv2	limitbreak/lbk_caster_start
+11063	离场	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi	
+11191	毁荡	冒险者	0	magic/swl_summon/mgc001	battle/magic_sum_start
+11192	医术	冒险者	0	magic/swl_summon/swlcarel	battle/magic_swl_start
+11193	星体风暴	冒险者	0	limitbreak/lbk_caster_lv2	limitbreak/lbk_caster_start
+11275	魔陶器：弱化敌人	冒险者	0	pc_contentsaction/item15	
+11276	魔陶器：隐形	冒险者	0	pc_contentsaction/item16	
+11277	魔陶器：石化敌人	冒险者	0	pc_contentsaction/item17	
+11278	魔石	冒险者	0	pc_contentsaction/item18	
+11383	鼻息	青魔法师	36	magic/rod_aoz/mgc001	battle/magic_aoz_start
+11384	4星吨	青魔法师	36	magic/rod_aoz/mgc042	battle/magic_aoz_start
+11385	水炮	青魔法师	36	magic/rod_aoz/mgc003	battle/magic_aoz_start
+11386	苦闷之歌	青魔法师	36	magic/rod_aoz/mgc004	battle/magic_aoz_start
+11387	高压电流	青魔法师	36	magic/rod_aoz/mgc005	battle/magic_aoz_start
+11388	臭气	青魔法师	36	magic/rod_aoz/mgc006	battle/magic_aoz_start
+11389	狂乱	青魔法师	36	magic/rod_aoz/mgc007	battle/magic_aoz_start
+11390	水流吐息	青魔法师	36	magic/rod_aoz/mgc008	battle/magic_aoz_start
+11391	平原震裂	青魔法师	36	magic/rod_aoz/mgc009	battle/magic_aoz_start
+11392	橡果炸弹	青魔法师	36	magic/rod_aoz/mgc010	battle/magic_aoz_start
+11393	怒发冲冠	青魔法师	36	magic/rod_aoz/mgc011	battle/magic_aoz_start
+11394	精神冲击	青魔法师	36	magic/rod_aoz/mgc012	battle/magic_aoz_start
+11395	吸血	青魔法师	36	magic/rod_aoz/mgc013	battle/magic_aoz_start
+11396	投弹	青魔法师	36	magic/rod_aoz/mgc014	battle/magic_aoz_start
+11397	千针刺	青魔法师	36	magic/rod_aoz/mgc015	battle/magic_aoz_start
+11398	钻头炮	青魔法师	36	magic/rod_aoz/mgc016	battle/magic_aoz_start
+11399	诡异视线	青魔法师	36	magic/rod_aoz/mgc017	battle/magic_aoz_start
+11400	锋利菜刀	青魔法师	36	magic/rod_aoz/mgc018	battle/magic_aoz_start
+11401	若隐若现	青魔法师	36	magic/rod_aoz/mgc019	battle/magic_aoz_start
+11402	火炎放射	青魔法师	36	magic/rod_aoz/mgc020	battle/magic_aoz_start
+11403	拍掌	青魔法师	36	magic/rod_aoz/mgc021	battle/magic_aoz_start
+11404	怒视	青魔法师	36	magic/rod_aoz/mgc022	battle/magic_aoz_start
+11405	导弹	青魔法师	36	magic/rod_aoz/mgc023	battle/magic_aoz_start
+11406	白风	青魔法师	36	magic/rod_aoz/mgc024	battle/magic_aoz_start
+11407	终极针	青魔法师	36	magic/rod_aoz/mgc025	battle/magic_aoz_start
+11408	自爆	青魔法师	36	magic/rod_aoz/mgc026	battle/magic_aoz_start
+11409	融合	青魔法师	36	magic/rod_aoz/mgc027	battle/magic_aoz_start
+11410	油性分泌物	青魔法师	36	magic/rod_aoz/mgc028	battle/magic_aoz_start
+11411	破防	青魔法师	36	magic/rod_aoz/mgc029	battle/magic_aoz_start
+11412	滑舌	青魔法师	36	magic/rod_aoz/mgc030	battle/magic_aoz_start
+11413	螺旋尾	青魔法师	36	magic/rod_aoz/mgc031	battle/magic_aoz_start
+11414	5级石化	青魔法师	36	magic/rod_aoz/mgc032	battle/magic_aoz_start
+11415	月之笛	青魔法师	36	magic/rod_aoz/mgc033	battle/magic_aoz_start
+11416	死亡宣告	青魔法师	36	magic/rod_aoz/mgc034	battle/magic_aoz_start
+11417	强力守护	青魔法师	36	magic/rod_aoz/mgc035	battle/magic_aoz_start
+11418	冰棘屏障	青魔法师	36	magic/rod_aoz/mgc036	battle/magic_aoz_start
+11419	寒冰咆哮	青魔法师	36	magic/rod_aoz/mgc037	battle/magic_aoz_start
+11420	雷电咆哮	青魔法师	36	magic/rod_aoz/mgc038	battle/magic_aoz_start
+11421	惊奇光	青魔法师	36	magic/rod_aoz/mgc039	battle/magic_aoz_start
+11422	喷墨	青魔法师	36	magic/rod_aoz/mgc040	battle/magic_aoz_start
+11423	投掷沙丁鱼	青魔法师	36	magic/rod_aoz/mgc041	
+11424	超硬化	青魔法师	36	magic/rod_aoz/mgc044_start	battle/magic_aoz_start
+11425	火投枪	青魔法师	36	magic/rod_aoz/mgc043	battle/magic_aoz_start
+11426	飞翎雨	青魔法师	36	ability/rod_aoz/abl001	
+11427	地火喷发	青魔法师	36	ability/rod_aoz/abl002	
+11428	山崩	青魔法师	36	ability/rod_aoz/abl003	
+11429	轰雷	青魔法师	36	ability/rod_aoz/abl004	
+11430	冰雪乱舞	青魔法师	36	ability/rod_aoz/abl005	
+11431	水神的面纱	青魔法师	36	ability/rod_aoz/abl006	
+11482	三重惩戒	冒险者	0	ability/swl_summon/abl015	battle/magic_sum_start
+11499	喊口号	冒险者	0	mount_sp/m0482/mon_sp001	
+11500	喊口号	冒险者	0	mount_sp/m0482/mon_sp001	
+12257	炮击	冒险者	0	normal/cannon_1	normal/aettouch_start
+12577	莫古力天堂	冒险者	0	mon_sp/[SKL_ID]/mon_sp001	battle/mon_sp_a_start
+12578	声援	冒险者	0	mon_sp/[SKL_ID]/mon_sp003	battle/mon_sp_a_start
+12870	文理技能	冒险者	0	pc_contentsaction/magi	
+13265	不给糖就捣蛋	冒险者	0	season/action01	
+13266	解除变身	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+13423	血盟崩石	冒险者	0	magic/cnj_white/mgc003	battle/magic_cnj_start
+13424	血盟烈风	冒险者	0	magic/cnj_white/aerola	battle/magic_cnj_start
+13425	血盟救疗	冒险者	0	magic/cnj_white/carel2	battle/magic_cnj_start
+13426	补魔	冒险者	0	rol_common/rol032	
+14587	雷剑气	冒险者	0	mon_sp/gimmick/qib_nin_gtkougeki	
+14840	极风	冒险者	0	ws/bt_2kt_emp/ws_s01	
+14841	紫阳花	冒险者	0	magic/2kt_samrai/mgc003	battle/magic_sam_start
+14842	必杀剑·晓天	冒险者	0	ability/2kt_samrai/abl003	
+14843	冥界恐叫打	冒险者	0	human_sp/c0101/human_sp060	battle/mon_sp_a_start
+15375	内丹	冒险者	0	rol_common/rol011	
+15537	插言	冒险者	0	rol_common/rol008	
+15553	发礼物	冒险者	0	pc_contentsaction/hand_over	normal/item_start
+15870	战逃反应	冒险者	0	ability/swd_knight/abl008	
+15989	瀑泻	舞者	38	ws/bt_chk_chk/ws_s01	
+15990	喷泉	舞者	38	ws/bt_chk_chk/ws_s02	
+15991	逆瀑泻	舞者	38	ws/bt_chk_chk/ws_s03	
+15992	坠喷泉	舞者	38	ws/bt_chk_chk/ws_s04	
+15993	风车	舞者	38	ws/bt_chk_chk/ws_s05	
+15994	落刃雨	舞者	38	ws/bt_chk_chk/ws_s06	
+15995	升风车	舞者	38	ws/bt_chk_chk/ws_s07	
+15996	落血雨	舞者	38	ws/bt_chk_chk/ws_s08	
+15997	标准舞步	舞者	38	ability/chk_rdc/abl001	
+15998	技巧舞步	舞者	38	ability/chk_rdc/abl002	
+15999	蔷薇曲脚步	冒险者	0	ws/bt_chk_chk/ws_s10	
+16000	小鸟交叠跳	冒险者	0	ws/bt_chk_chk/ws_s11	
+16001	绿叶小踢腿	冒险者	0	ws/bt_chk_chk/ws_s12	
+16002	金冠趾尖转	冒险者	0	ws/bt_chk_chk/ws_s13	
+16003	标准舞步结束	冒险者	0	ws/bt_chk_chk/ws_s14	
+16004	技巧舞步结束	冒险者	0	ws/bt_chk_chk/ws_s15	
+16005	剑舞	舞者	38	ws/bt_chk_chk/ws_s09	
+16006	闭式舞姿	舞者	38	ability/chk_rdc/abl010	
+16007	扇舞·序	舞者	38	ability/chk_rdc/abl003	
+16008	扇舞·破	舞者	38	ability/chk_rdc/abl004	
+16009	扇舞·急	舞者	38	ability/chk_rdc/abl005	
+16010	前冲步	舞者	38	ability/chk_rdc/abl013	
+16011	进攻之探戈	舞者	38	ability/chk_rdc/abl006	
+16012	防守之桑巴	舞者	38	ability/chk_rdc/abl008	
+16013	百花争艳	舞者	38	ability/chk_rdc/abl009	
+16014	即兴表演	舞者	38	ability/chk_rdc/abl011_start	
+16015	治疗之华尔兹	舞者	38	ability/chk_rdc/abl007	
+16137	利刃斩	绝枪战士	37	ws/bt_2gb_emp/ws_s01	
+16138	无情	绝枪战士	37	ability/2gb_bgb/abl001	
+16139	残暴弹	绝枪战士	37	ws/bt_2gb_emp/ws_s02	
+16140	伪装	绝枪战士	37	ability/2gb_bgb/abl002	
+16141	恶魔切	绝枪战士	37	ws/bt_2gb_emp/ws_s03	
+16142	王室亲卫	绝枪战士	37	ability/2gb_bgb/abl004	
+16143	闪雷弹	绝枪战士	37	ws/bt_2gb_emp/ws_s04	
+16144	危险领域	绝枪战士	37	ability/2gb_bgb/abl003	
+16145	迅连斩	绝枪战士	37	ws/bt_2gb_emp/ws_s05	
+16146	烈牙	绝枪战士	37	ws/bt_2gb_emp/ws_s06	
+16147	猛兽爪	冒险者	0	ws/bt_2gb_emp/ws_s07	
+16148	星云	绝枪战士	37	ability/2gb_bgb/abl005	
+16149	恶魔杀	绝枪战士	37	ws/bt_2gb_emp/ws_s08	
+16150	凶禽爪	冒险者	0	ws/bt_2gb_emp/ws_s09	
+16151	极光	绝枪战士	37	ability/2gb_bgb/abl006	
+16152	超火流星	绝枪战士	37	ability/2gb_bgb/abl007	
+16153	音速破	绝枪战士	37	ws/bt_2gb_emp/ws_s10	
+16156	撕喉	冒险者	0	ability/2gb_bgb/abl010	
+16157	裂膛	冒险者	0	ability/2gb_bgb/abl011	
+16158	穿目	冒险者	0	ability/2gb_bgb/abl012	
+16159	弓形冲波	绝枪战士	37	ability/2gb_bgb/abl013	
+16160	光之心	绝枪战士	37	ability/2gb_bgb/abl022	
+16161	石之心	绝枪战士	37	ability/2gb_bgb/abl009	
+16162	爆发击	绝枪战士	37	ws/bt_2gb_emp/ws_s11	
+16163	命运之环	绝枪战士	37	ws/bt_2gb_emp/ws_s12	
+16164	血壤	绝枪战士	37	ability/2gb_bgb/abl015	
+16165	爆破领域	绝枪战士	37	ability/2gb_bgb/abl017	
+16191	单色标准舞步结束	冒险者	0	ws/bt_chk_chk/ws_s14	
+16192	双色标准舞步结束	冒险者	0	ws/bt_chk_chk/ws_s14	
+16193	单色技巧舞步结束	冒险者	0	ws/bt_chk_chk/ws_s23	
+16194	双色技巧舞步结束	冒险者	0	ws/bt_chk_chk/ws_s23	
+16195	三色技巧舞步结束	冒险者	0	ws/bt_chk_chk/ws_s23	
+16196	四色技巧舞步结束	冒险者	0	ws/bt_chk_chk/ws_s23	
+16230	医术	秘术师	26	magic/swl_summon/swlcarel	battle/magic_swl_start
+16269	公正剑	冒险者	0	ws/bt_swd_sld/ws_s07	
+16418	残暴弹	冒险者	0	ws/bt_2gb_emp/ws_s02	
+16434	利刃斩	冒险者	0	ws/bt_2gb_emp/ws_s01	
+16435	迅连斩	冒险者	0	ws/bt_2gb_emp/ws_s05	
+16436	镇痛恢复药	冒险者	0	normal/item_end	normal/item_start
+16437	光明之刃	冒险者	0	human_sp/c0101/human_sp078	human_sp/human_sp_a_start
+16438	完美隐形	冒险者	0	human_sp/c0101/human_sp079	
+16439	晶壤光斩	冒险者	0	human_sp/c0101/human_sp080	human_sp/human_sp_b_start
+16457	日珥斩	骑士	19	ws/bt_swd_sld/ws_s12	
+16458	圣环	骑士	19	magic/swd_knight/mgc003	battle/magic_pld_start
+16459	悔罪	骑士	19	ability/swd_knight/abl022	
+16460	赎罪剑	骑士	19	ws/bt_swd_sld/ws_s14	
+16461	调停	骑士	19	ws/bt_swd_sld/ws_s13	
+16462	秘银暴风	战士	21	ability/2ax_warrior/abl024	
+16463	混沌旋风	冒险者	0	ws/bt_2ax_emp/ws_s11	
+16464	原初的勇猛	战士	21	ability/2ax_warrior/abl023	
+16465	狂魂	冒险者	0	ws/bt_2ax_emp/ws_s15	
+16466	暗黑波动	暗黑骑士	32	ability/2sw_dark/abl025	
+16467	暗黑锋	暗黑骑士	32	ability/2sw_dark/abl026	
+16468	刚魂	暗黑骑士	32	ability/2sw_dark/abl027	
+16469	暗影波动	暗黑骑士	32	ability/2sw_dark/abl028	
+16470	暗影锋	暗黑骑士	32	ability/2sw_dark/abl029	
+16471	暗黑布道	暗黑骑士	32	ability/2sw_dark/abl038	
+16472	掠影示现	暗黑骑士	32	ability/2sw_dark/abl031	
+16473	四面脚	武僧	20	ws/bt_clw_clw/ws_s12	
+16474	万象斗气圈	武僧	20	ability/clw_monk/abl024	
+16476	六合星导脚	武僧	20	ws/bt_clw_clw/ws_s13	
+16477	山境酷刑	龙骑士	22	ws/bt_2sp_emp/ws_s14	
+16478	高跳	龙骑士	22	ability/2sp_dragoon/abl029	
+16479	龙眼雷电	冒险者	0	ws/bt_2sp_emp/ws_s13	
+16480	坠星冲	龙骑士	22	ability/2sp_dragoon/abl020	
+16481	必杀剑·闪影	武士	34	ability/2kt_samrai/abl017	
+16482	意气冲天	武士	34	ability/2kt_samrai/abl018	
+16485	回返五剑	冒险者	0	magic/2kt_samrai/mgc010	battle/magic_sam_start
+16486	回返雪月花	冒险者	0	magic/2kt_samrai/mgc006	battle/magic_sam_start
+16487	照破	武士	34	ability/2kt_samrai/abl023	
+16488	八卦无刃杀	忍者	30	ws/bt_dgr_dgr/ws_s11	
+16489	命水	忍者	30	ability/dgr_ninja/abl026	
+16491	劫火灭却之术	冒险者	0	ability/dgr_ninja/abl027	
+16492	冰晶乱流之术	冒险者	0	ability/dgr_ninja/abl028	
+16493	分身之术	忍者	30	ability/dgr_ninja/abl029	
+16494	影噬箭	吟游诗人	23	ws/bt_2bw_emp/ws_s14	
+16495	爆发射击	吟游诗人	23	ws/bt_2bw_emp/ws_s15	
+16496	绝峰箭	吟游诗人	23	ws/bt_2bw_emp/ws_s16	
+16497	自动弩	机工士	31	ws/bt_2gn_emp/ws_s15	
+16498	钻头	机工士	31	ws/bt_2gn_emp/ws_s16	
+16499	毒菌冲击	机工士	31	ws/bt_2gn_emp/ws_s17	
+16500	空气锚	机工士	31	ws/bt_2gn_emp/ws_s18	
+16501	后式自走人偶	机工士	31	ability/2gn_machin/abl027	
+16502	超档后式人偶	机工士	31	ability/2gn_machin/abl023	
+16505	绝望	黑魔法师	25	magic/thm_black/mgc006	battle/magic_blk_start
+16506	灵极魂	黑魔法师	25	ability/thm_black/abl017	
+16507	异言	黑魔法师	25	magic/thm_black/mgc007	battle/magic_blk_start
+16508	能量吸收	秘术师	26	magic/swl_summon/mgc008	
+16510	能量抽取	召唤师	27	magic/swl_summon/mgc009	
+16511	迸裂	秘术师	26	magic/swl_summon/mgc010	battle/magic_swl_start
+16514	灵泉之炎	冒险者	0	ability/swl_summon/abl036	battle/magic_sum_start
+16515	炼狱之炎	冒险者	0	ability/swl_summon/abl037	battle/magic_sum_start
+16516	不死鸟迸发	冒险者	0	ability/swl_summon/abl039	
+16524	赤震雷	赤魔法师	35	magic/2rp_redmage/mgc017	battle/magic_rdm_start
+16525	赤烈风	赤魔法师	35	magic/2rp_redmage/mgc018	battle/magic_rdm_start
+16526	冲击	赤魔法师	35	magic/2rp_redmage/mgc003	battle/magic_rdm_start
+16527	交剑	赤魔法师	35	ability/2rp_redmage/abl010	
+16528	魔续斩	冒险者	0	ws/bt_2rp_emp/ws_s09	
+16529	续斩	赤魔法师	35	ws/bt_2rp_emp/ws_s10	
+16530	焦热	冒险者	0	magic/2rp_redmage/mgc022	battle/magic_rdm_start
+16531	安慰之心	白魔法师	24	ability/cnj_white/abl018	
+16532	天辉	白魔法师	24	magic/cnj_white/mgc005	
+16533	闪耀	白魔法师	24	magic/cnj_white/mgc004	battle/magic_wht_start
+16534	狂喜之心	白魔法师	24	ability/cnj_white/abl015	
+16535	苦难之心	白魔法师	24	ability/cnj_white/abl016	
+16536	节制	白魔法师	24	ability/cnj_white/abl017	
+16537	仙光的低语	学者	28	ability/swl_summon/abl031	
+16538	异想的幻光	学者	28	ability/swl_summon/abl031	
+16539	破阵法	学者	28	ability/swl_summon/abl007	battle/magic_sch_start
+16540	蛊毒法	学者	28	magic/swl_summon/mgc013	battle/magic_sch_start
+16541	死炎法	学者	28	magic/swl_summon/mgc011	battle/magic_sch_start
+16542	秘策	学者	28	ability/swl_summon/abl042	
+16543	异想的祥光	学者	28	ability/swl_summon/abl031	
+16545	炽天召唤	学者	28	ability/swl_summon/abl043	
+16546	慰藉	学者	28	ability/swl_summon/abl044	
+16552	占卜	占星术士	33	ability/2gl_astro/abl028	
+16553	天星冲日	占星术士	33	ability/2gl_astro/abl040	
+16554	焚灼	占星术士	33	ability/2gl_astro/abl023	battle/magic_ast_start
+16555	煞星	占星术士	33	magic/2gl_astro/mgc015	battle/magic_ast_start
+16556	天星交错	占星术士	33	ability/2gl_astro/abl026	
+16557	天宫图	占星术士	33	ability/2gl_astro/abl024	
+16558	天宫图	冒险者	0	ability/2gl_astro/abl025	
+16559	中间学派	占星术士	33	ability/2gl_astro/abl027	
+16574	隆卡爆炎	冒险者	0	magic/thm_black/firega	battle/magic_thm_start
+16575	隆卡冰封	冒险者	0	magic/thm_black/blizzarga	battle/magic_thm_start
+16576	隆卡暴雷	冒险者	0	magic/thm_black/thunderga	battle/magic_thm_start
+16577	隆卡核爆	冒险者	0	magic/thm_black/flare	battle/magic_blk_start
+16578	坠星	冒险者	0	limitbreak/lbk_caster_lv2	limitbreak/lbk_caster_start
+16766	起爆	冒险者	0	ability/2gn_machin/abl024	
+16788	先锋剑	冒险者	0	ws/bt_swd_sld/wsh001	
+16789	日影斩	冒险者	0	ws/bt_swd_sld/ws_s11	
+16804	粗分斩	冒险者	0	ability/2gb_bgb/abl008	
+16889	策动	机工士	31	ability/2gn_machin/abl028	
+16984	游荡剑	冒险者	0	ws/bt_swd_sld/ws_s02	
+16985	大日食	冒险者	0	ws/bt_swd_sld/ws_s12	
+17000	隆卡救疗	冒险者	0	magic/cnj_white/carel2	battle/magic_cnj_start
+17001	隆卡医治	冒险者	0	magic/cnj_white/carelga	battle/magic_cnj_start
+17002	隆卡康复	冒险者	0	rol_common/rol038	battle/magic_cnj_start
+17003	隆卡坚石	冒险者	0	magic/cnj_white/stonela	battle/magic_cnj_start
+17004	隆卡痊愈	冒险者	0	ability/cnj_white/abl005	
+17105	灵魂之青	冒险者	0	limitbreak/lbk_gunbreaker_lv3	limitbreak/lbk_tank_start
+17106	红舞华莲	冒险者	0	limitbreak/lbk_dancer_lv3	limitbreak/lbk_dancer_start
+17122	酸咬箭	冒险者	0	ws/bt_2bw_emp/ws_s11	
+17123	强力射击	冒险者	0	ws/bt_2bw_emp/wsh001	
+17124	星光箭	冒险者	0	ws/bt_2bw_emp/ws_s13	
+17125	消声箭	冒险者	0	rol_common/u_rol021	
+17209	超荷	机工士	31	ability/2gn_machin/abl012	
+17215	朝日召唤	学者	28	normal/callpet_end	normal/callpet_start
+17236	骑士精神	冒险者	0	magic/swd_knight/mgc001	battle/magic_pld_start
+17291	绝脉隐形	冒险者	0	human_sp/c0101/human_sp079	
+17390	恐怖视线？	冒险者	0	mount_sp/m0580/mon_sp001	
+17391	恐怖视线？	冒险者	0	mount_sp/m0580/mon_sp001	
+17596	猎人的智慧	冒险者	0	rol_common/rol011	
+17839	星云	冒险者	0	ability/2gb_bgb/abl005	
+17864	毒菌	学者	28	magic/swl_summon/bio	battle/magic_swl_start
+17865	猛毒菌	学者	28	magic/swl_summon/bioga	battle/magic_swl_start
+17869	毁灭	学者	28	magic/swl_summon/fieryblast	battle/magic_swl_start
+17870	毁坏	学者	28	magic/swl_summon/ruinla	battle/magic_swl_start
+17901	折服	冒险者	0	ability/2gb_bgb/abl001	
+18073	解除闭式舞姿	冒险者	0	ability/no_mot_ability	
+18187	鼻吸	冒险者	0	mount_sp/m0607/mon_sp001	
+18188	鼻吸	冒险者	0	mount_sp/m0607/mon_sp001	
+18295	高山气流	青魔法师	36	magic/rod_aoz/mgc046	battle/magic_aoz_start
+18296	万变水波	青魔法师	36	magic/rod_aoz/mgc047	battle/magic_aoz_start
+18297	狂风暴雪	青魔法师	36	magic/rod_aoz/mgc048	battle/magic_aoz_start
+18298	生物电	青魔法师	36	magic/rod_aoz/mgc049	battle/magic_aoz_start
+18299	寒光	青魔法师	36	magic/rod_aoz/mgc050	battle/magic_aoz_start
+18300	深渊贯穿	青魔法师	36	magic/rod_aoz/mgc051	battle/magic_aoz_start
+18301	唧唧咋咋	青魔法师	36	magic/rod_aoz/mgc052	battle/magic_aoz_start
+18302	怪音波	青魔法师	36	magic/rod_aoz/mgc053	battle/magic_aoz_start
+18303	绒绒治疗	青魔法师	36	magic/rod_aoz/mgc054	battle/magic_aoz_start
+18304	哥布防御	青魔法师	36	magic/rod_aoz/mgc055	battle/magic_aoz_start
+18305	魔法锤	青魔法师	36	magic/rod_aoz/mgc056	battle/magic_aoz_start
+18306	防御指示	青魔法师	36	magic/rod_aoz/mgc057	battle/magic_aoz_start
+18307	蛙腿	青魔法师	36	magic/rod_aoz/mgc058	battle/magic_aoz_start
+18308	音爆	青魔法师	36	magic/rod_aoz/mgc059	battle/magic_aoz_start
+18309	口笛	青魔法师	36	magic/rod_aoz/mgc060	battle/magic_aoz_start
+18310	白骑士之旅	青魔法师	36	magic/rod_aoz/mgc061	battle/magic_aoz_start
+18311	黑骑士之旅	青魔法师	36	magic/rod_aoz/mgc062	battle/magic_aoz_start
+18312	5级即死	青魔法师	36	magic/rod_aoz/mgc063	battle/magic_aoz_start
+18313	火箭炮	青魔法师	36	magic/rod_aoz/mgc064	battle/magic_aoz_start
+18314	永恒射线	青魔法师	36	magic/rod_aoz/mgc065	battle/magic_aoz_start
+18315	仙人盾	青魔法师	36	magic/rod_aoz/mgc066	battle/magic_aoz_start
+18316	复仇冲击	青魔法师	36	magic/rod_aoz/mgc067	battle/magic_aoz_start
+18317	天使低语	青魔法师	36	magic/rod_aoz/mgc068	battle/magic_aoz_start
+18318	蜕皮	青魔法师	36	magic/rod_aoz/mgc069	battle/magic_aoz_start
+18319	逆流	青魔法师	36	magic/rod_aoz/mgc070	battle/magic_aoz_start
+18320	捕食	青魔法师	36	magic/rod_aoz/mgc071	battle/magic_aoz_start
+18321	小侦测	青魔法师	36	magic/rod_aoz/mgc072	battle/magic_aoz_start
+18322	以太复制	青魔法师	36	magic/rod_aoz/mgc073	battle/magic_aoz_start
+18323	穿甲散弹	青魔法师	36	ability/rod_aoz/abl007	
+18324	类星体	青魔法师	36	ability/rod_aoz/abl008	
+18325	正义飞踢	青魔法师	36	ability/rod_aoz/abl009	
+18772	死天枪	冒险者	0	ws/bt_2sp_emp/ws_s01	
+18773	音速刺	冒险者	0	ability/2sp_dragoon/abl015	
+18774	山境酷刑	冒险者	0	ws/bt_2sp_emp/ws_s14	
+18775	苍天龙炎冲	冒险者	0	ability/2sp_dragoon/abl004	
+18776	绝灭	冒险者	0	human_sp/c0101/human_sp083	
+18777	腾龙枪	冒险者	0	human_sp/c0101/human_sp084	
+18778	恐惧咆哮	冒险者	0	human_sp/c0101/human_sp085	
+18780	坠星冲	冒险者	0	ability/2sp_dragoon/abl020	
+18781	暗影龙炎冲	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi	
+18782	暗影龙炎冲	冒险者	0	human_sp/c0501/human_sp115	
+18805	天之印	冒险者	0	ability/dgr_ninja/abl011	
+18806	地之印	冒险者	0	ability/dgr_ninja/abl012	
+18807	人之印	冒险者	0	ability/dgr_ninja/abl013	
+18873	风魔手里剑	冒险者	0	magic/dgr_ninja/syuriken	
+18874	风魔手里剑	冒险者	0	magic/dgr_ninja/syuriken	
+18875	风魔手里剑	冒险者	0	magic/dgr_ninja/syuriken	
+18876	火遁之术	冒险者	0	magic/dgr_ninja/katon	
+18877	雷遁之术	冒险者	0	magic/dgr_ninja/raiton	
+18878	冰遁之术	冒险者	0	magic/dgr_ninja/hyoton	
+18879	风遁之术	冒险者	0	magic/dgr_ninja/mgc001	
+18880	土遁之术	冒险者	0	magic/dgr_ninja/doton	
+18881	水遁之术	冒险者	0	magic/dgr_ninja/suiton	
+19002	长期俭约	炼金术士	14	craft/buff	
+19003	长期俭约	烹调师	15	craft/buff	
+19004	改革	刻木匠	8	craft/buff	
+19005	改革	锻铁匠	9	craft/buff	
+19006	改革	铸甲匠	10	craft/buff	
+19007	改革	雕金匠	11	craft/buff	
+19008	改革	制革匠	12	craft/buff	
+19009	改革	裁衣匠	13	craft/buff	
+19010	改革	炼金术士	14	craft/buff	
+19011	改革	烹调师	15	craft/buff	
+19012	最终确认	刻木匠	8	craft/buff	
+19013	最终确认	锻铁匠	9	craft/buff	
+19014	最终确认	铸甲匠	10	craft/buff	
+19015	最终确认	雕金匠	11	craft/buff	
+19016	最终确认	制革匠	12	craft/buff	
+19017	最终确认	裁衣匠	13	craft/buff	
+19018	最终确认	炼金术士	14	craft/buff	
+19019	最终确认	烹调师	15	craft/buff	
+19046	豪风	冒险者	0	ws/bt_2kt_emp/ws_s02	
+19047	夜月	冒险者	0	ws/bt_2kt_emp/ws_s05	
+19218	生命水	冒险者	0	normal/item_end	normal/item_start
+19238	以太复制	冒险者	0	ability/no_mot_ability	battle/magic_aoz_start
+19239	以太复制	冒险者	0	ability/no_mot_ability	battle/magic_aoz_start
+19240	以太复制	冒险者	0	ability/no_mot_ability	battle/magic_aoz_start
+19264	放生列表	捕鱼人	18	ability/no_mot_ability	
+19275	微微臭气	冒险者	0	mount_sp/m0605/mon_sp001	
+19297	崇敬	刻木匠	8	craft/buff	
+19298	崇敬	锻铁匠	9	craft/buff	
+19299	崇敬	铸甲匠	10	craft/buff	
+19300	崇敬	雕金匠	11	craft/buff	
+19301	崇敬	制革匠	12	craft/buff	
+19302	崇敬	裁衣匠	13	craft/buff	
+19303	崇敬	炼金术士	14	craft/buff	
+19304	崇敬	烹调师	15	craft/buff	
+19731	解除玩偶装	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+19997	抓捕	冒险者	0	pc_contentsaction/ami_swing	
+19998	粘鸟胶	冒险者	0	pc_contentsaction/throw_torimochi	
+20030	惊奇光	冒险者	0	mount_sp/m0642/mon_sp001	
+20031	惊奇光	冒险者	0	mount_sp/m0642/mon_sp001	
+20061	时尚配饰	冒险者	0	normal/item_end	normal/item_start
+20064	开屏	冒险者	0	mount_sp/m0619/mon_sp001	
+20121	炮击	冒险者	0	mount_sp/m0671/mon_sp001	
+20122	炮击	冒险者	0	mount_sp/m0671/mon_sp001	
+20489	以太加农炮	冒险者	0	mon_sp/[SKL_ID]/mon_sp001	
+20490	以太光剑	冒险者	0	mon_sp/[SKL_ID]/mon_sp002	
+20491	以太连斩	冒险者	0	mon_sp/[SKL_ID]/mon_sp003	
+20492	最终一击	冒险者	0	mon_sp/[SKL_ID]/mon_sp004	
+20493	究极破坏炮	冒险者	0	mon_sp/[SKL_ID]/mon_sp005	battle/mon_sp_b_start
+20494	加速模式	冒险者	0	mon_sp/[SKL_ID]/mon_sp007	
+20495	以太屏障	冒险者	0	mon_sp/[SKL_ID]/mon_sp006	
+20496	以太机雷	冒险者	0	mon_sp/[SKL_ID]/mon_sp009	battle/mon_sp_c_start
+20529	赤火炎	冒险者	0	magic/2rp_redmage/mgc008	battle/magic_rdm_start
+20530	赤疾风	冒险者	0	magic/2rp_redmage/mgc005	battle/magic_rdm_start
+20531	赤飞石	冒险者	0	magic/2rp_redmage/mgc009	battle/magic_rdm_start
+20532	赤核爆	冒险者	0	magic/2rp_redmage/mgc012	battle/magic_rdm_start
+20533	深红救世	冒险者	0	human_sp/c0604/human_sp003	
+20692	命运骰子	冒险者	0	eureka/myc016	
+20693	命运骰子	冒险者	0	eureka/myc017	
+20694	命运骰子	冒险者	0	eureka/myc017	
+20695	命运骰子	冒险者	0	eureka/myc017	
+20696	命运骰子	冒险者	0	eureka/myc018	
+20697	命运骰子	冒险者	0	eureka/myc018	
+20698	命运骰子	冒险者	0	eureka/myc018	
+20699	命运骰子	冒险者	0	eureka/myc018	
+20700	命运骰子	冒险者	0	eureka/myc018	
+20734	命运骰子	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi	
+20735	义军不死鸟之尾	冒险者	0	eureka/erk032	eureka/myc_item_start
+20736	义军复活药	冒险者	0	eureka/myc_item_end	eureka/myc_item_start
+20737	义军恢复药箱	冒险者	0	eureka/myc_item_end	eureka/myc_item_start
+20738	义军以太药箱	冒险者	0	eureka/myc_item_end	eureka/myc_item_start
+20739	义军治愈箱	冒险者	0	eureka/myc_item_end	eureka/myc_item_start
+20740	义军恢复药	冒险者	0	eureka/myc_item_end	eureka/myc_item_start
+20741	术士的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20742	斗士的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20743	治愈者的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20744	魔战士的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20745	重骑兵的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20746	守护者的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20747	祭司的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20748	武人的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20749	斥候的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20750	破戒僧的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20751	狂战士的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20752	盗贼的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20753	吸血鬼的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20754	狼人的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20755	圣骑士的秘药	冒险者	0	eureka/myc_item001	eureka/myc_item_start
+20756	术士的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20757	斗士的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20758	治愈者的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20759	魔战士的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20760	重骑兵的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20761	守护者的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20762	祭司的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20763	武人的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20764	斥候的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20765	破戒僧的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20766	狂战士的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20767	盗贼的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20768	吸血鬼的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20769	狼人的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20770	圣骑士的灵药	冒险者	0	eureka/myc_item002	eureka/myc_item_start
+20940	自我修复	冒险者	0	mon_sp/[SKL_ID]/mon_sp008	
+21023	失传技能	冒险者	0	pc_contentsaction/magi	
+21177	富矿的馈赠I	采矿工	16	gather/buff	
+21178	沃土的馈赠I	园艺工	17	gather/buff	
+21203	纳尔札尔福音	采矿工	16	gather/buff	
+21204	诺菲卡福音	园艺工	17	gather/buff	
+21205	价值瞩目	采矿工	16	gather/buff	
+21206	价值瞩目	园艺工	17	gather/buff	
+21324	火焰之舞：燃烧舞步	冒险者	0	pc_contentsaction/hula_powerup	pc_contentsaction/hula_powerup_start
+21325	火焰之舞：青磷舞步	冒险者	0	pc_contentsaction/hula_heal	pc_contentsaction/hula_heal_start
+21494	飞刺	冒险者	0	ability/2rp_redmage/abl003	
+21495	六分反击	冒险者	0	ability/2rp_redmage/abl005	
+21496	移转	冒险者	0	ability/2rp_redmage/abl002	
+21497	赤治疗	冒险者	0	magic/2rp_redmage/mgc010	battle/magic_rdm_start
+21498	祸星	冒险者	0	magic/2gl_astro/mgc014	battle/magic_ast_start
+21499	命运抽卡	冒险者	0	ability/2gl_astro/abl001	
+21607	王冠之领主	冒险者	0	ability/2gl_astro/play07	
+21608	吉星	冒险者	0	magic/2gl_astro/mgc001	battle/magic_ast_start
+21609	阳星相位	冒险者	0	magic/2gl_astro/mgc007	battle/magic_ast_start
+21610	河流神的卷轴	冒险者	0	ability/2gl_astro/play05	
+21611	不动宫	冒险者	0	ability/2gl_astro/abl012	
+21612	炽炎	冒险者	0	magic/thm_black/mgc002	battle/magic_blk_start
+21613	秽浊	冒险者	0	magic/thm_black/mgc005	battle/magic_blk_start
+21852	亚拉戈冰澈	冒险者	0	magic/thm_black/mgc001	battle/magic_blk_start
+21884	霹雷	冒险者	0	magic/thm_black/mgc004	battle/magic_blk_start
+21886	救疗	冒险者	0	magic/cnj_white/carel2	battle/magic_cnj_start
+21888	医济	冒险者	0	magic/cnj_white/carella	battle/magic_cnj_start
+21921	石化	冒险者	0	human_sp/c0701/human_sp002	battle/magic_blk_start
+21923	赤神圣	冒险者	0	magic/2rp_redmage/mgc013	battle/magic_rdm_start
+22182	提纯	采矿工	16	gather/selection	
+22183	大胆提纯	采矿工	16	gather/selection_bold	
+22184	慎重提纯	采矿工	16	gather/selection	
+22185	集中检查	采矿工	16	gather/buff	
+22186	提纯	园艺工	17	gather/selection	
+22187	大胆提纯	园艺工	17	gather/selection_bold	
+22188	慎重提纯	园艺工	17	gather/selection	
+22189	集中检查	园艺工	17	gather/buff	
+22346	胜负师的仙药	冒险者	0	eureka/myc_item003	eureka/myc_item_start
+22347	贤者的仙药	冒险者	0	eureka/myc_item003	eureka/myc_item_start
+22348	剑豪的仙药	冒险者	0	eureka/myc_item003	eureka/myc_item_start
+22349	弓圣的仙药	冒险者	0	eureka/myc_item003	eureka/myc_item_start
+22350	豪杰的仙药	冒险者	0	eureka/myc_item003	eureka/myc_item_start
+22351	圣人的仙药	冒险者	0	eureka/myc_item003	eureka/myc_item_start
+22502	炽炎	冒险者	0	magic/thm_black/mgc002	battle/magic_blk_start
+22817	炽炎	冒险者	0	magic/thm_black/mgc002	battle/magic_blk_start
+23264	渔叉三段	青魔法师	36	magic/rod_aoz/mgc074	battle/magic_aoz_start
+23265	哔哩哔哩	青魔法师	36	magic/rod_aoz/mgc075	battle/magic_aoz_start
+23266	掀地板之术	青魔法师	36	magic/rod_aoz/mgc076	battle/magic_aoz_start
+23267	彻骨雾寒	青魔法师	36	magic/rod_aoz/mgc077	battle/magic_aoz_start
+23268	冰雾	冒险者	0	magic/rod_aoz/mgc098	
+23269	赞歌	青魔法师	36	magic/rod_aoz/mgc079	battle/magic_aoz_start
+23270	圣光射线	青魔法师	36	magic/rod_aoz/mgc080	battle/magic_aoz_start
+23271	污泥泼洒	青魔法师	36	magic/rod_aoz/mgc081	battle/magic_aoz_start
+23272	天使的点心	青魔法师	36	magic/rod_aoz/mgc082	battle/magic_aoz_start
+23273	玄结界	青魔法师	36	magic/rod_aoz/mgc083_start	battle/magic_aoz_start
+23274	玄天武水壁	冒险者	0	magic/rod_aoz/mgc085	
+23275	斗灵弹	青魔法师	36	magic/rod_aoz/mgc086	battle/magic_aoz_start
+23276	斗争本能	青魔法师	36	magic/rod_aoz/mgc087	battle/magic_aoz_start
+23277	超振动	青魔法师	36	magic/rod_aoz/mgc088	battle/magic_aoz_start
+23278	冰焰	青魔法师	36	magic/rod_aoz/mgc089	battle/magic_aoz_start
+23279	芥末爆弹	青魔法师	36	magic/rod_aoz/mgc090	battle/magic_aoz_start
+23280	龙之力	青魔法师	36	magic/rod_aoz/mgc091	battle/magic_aoz_start
+23281	以太火花	青魔法师	36	magic/rod_aoz/mgc092	battle/magic_aoz_start
+23282	水力吸引	青魔法师	36	magic/rod_aoz/mgc093	battle/magic_aoz_start
+23283	水脉诅咒	青魔法师	36	magic/rod_aoz/mgc094	battle/magic_aoz_start
+23284	陆行鸟陨石	青魔法师	36	magic/rod_aoz/mgc095	battle/magic_aoz_start
+23285	马特拉魔术	青魔法师	36	magic/rod_aoz/mgc096	battle/magic_aoz_start
+23286	生成外设	青魔法师	36	magic/rod_aoz/mgc097	battle/magic_aoz_start
+23287	如意大旋风	青魔法师	36	ability/rod_aoz/abl010	
+23288	鬼宿脚	青魔法师	36	ability/rod_aoz/abl011_start	
+23289	鬼宿脚	冒险者	0	ability/rod_aoz/abl013	
+23290	月下彼岸花	青魔法师	36	ability/rod_aoz/abl014	
+23345	亚永恒吐息	冒险者	0	mount_sp/m0687/mon_sp001	
+23416	赞歌	青魔法师	36	magic/rod_aoz/mgc079	battle/magic_aoz_start
+23907	返回磁石	冒险者	0	eureka/myc_item004	eureka/myc_item_start
+23911	光之幕帘	冒险者	0	eureka/myc_item005	eureka/myc_item_start
+23922	义军圣灵药	冒险者	0	eureka/myc_item006	eureka/myc_item_start
+24066	袖内抽卡·命运	冒险者	0	ability/2gl_astro/abl021	
+24276	冰花	冒险者	0	mount_sp/m0176/mon_sp002	
+24277	肌肉肌肉	冒险者	0	pc_contentsaction/muscle	
+24278	蓬松蓬松	冒险者	0	pc_contentsaction/point	
+24279	转圈转圈	冒险者	0	pc_contentsaction/lookout	
+24280	以太剃刀	冒险者	0	pc_contentsaction/bazooka2_end	pc_contentsaction/bazooka2_start
+24283	注药	贤者	40	magic/2ff_sage/mgc001	battle/magic_2fa_start
+24284	诊断	贤者	40	magic/2ff_sage/mgc002	battle/magic_2fb_start
+24285	心关	贤者	40	ability/2ff_sage/abl001	
+24286	预后	贤者	40	magic/2ff_sage/mgc038	battle/magic_2fb_start
+24287	复苏	贤者	40	magic/2ff_sage/mgc004	battle/magic_2fb_start
+24288	自生	贤者	40	ability/2ff_sage/abl027	
+24289	发炎	贤者	40	magic/2ff_sage/mgc005	battle/magic_2fa_start
+24290	均衡	贤者	40	magic/2ff_sage/mgc006	
+24291	均衡诊断	冒险者	0	magic/2ff_sage/mgc007	battle/magic_2fb_start
+24292	均衡预后	冒险者	0	magic/2ff_sage/mgc036	battle/magic_2fb_start
+24293	均衡注药	冒险者	0	magic/2ff_sage/mgc009	battle/magic_2fa_start
+24294	拯救	贤者	40	ability/2ff_sage/abl004	
+24295	神翼	贤者	40	ability/2ff_sage/abl005	
+24296	灵橡清汁	贤者	40	ability/2ff_sage/abl007	
+24297	失衡	贤者	40	magic/2ff_sage/mgc010	battle/magic_2fa_start
+24298	坚角清汁	贤者	40	ability/2ff_sage/abl008	
+24299	寄生清汁	贤者	40	ability/2ff_sage/abl028	
+24300	活化	贤者	40	ability/2ff_sage/abl010	
+24301	消化	贤者	40	ability/2ff_sage/abl026	
+24302	自生II	贤者	40	ability/2ff_sage/abl012	
+24303	白牛清汁	贤者	40	ability/2ff_sage/abl013	
+24304	箭毒	贤者	40	magic/2ff_sage/mgc011	battle/magic_2fc_start
+24305	输血	贤者	40	ability/2ff_sage/abl014	
+24306	注药II	贤者	40	magic/2ff_sage/mgc012	battle/magic_2fa_start
+24307	发炎II	贤者	40	magic/2ff_sage/mgc013	battle/magic_2fc_start
+24308	均衡注药II	冒险者	0	magic/2ff_sage/mgc014	battle/magic_2fc_start
+24309	根素	贤者	40	ability/2ff_sage/abl015	
+24310	整体论	贤者	40	ability/2ff_sage/abl020	
+24311	泛输血	贤者	40	ability/2ff_sage/abl021	
+24312	注药III	贤者	40	magic/2ff_sage/mgc015	battle/magic_2fc_start
+24313	发炎III	贤者	40	magic/2ff_sage/mgc016	battle/magic_2fc_start
+24314	均衡注药III	冒险者	0	magic/2ff_sage/mgc017	battle/magic_2fc_start
+24315	失衡II	贤者	40	magic/2ff_sage/mgc020	battle/magic_2fc_start
+24316	箭毒II	贤者	40	magic/2ff_sage/mgc018	battle/magic_2fc_start
+24317	混合	贤者	40	ability/2ff_sage/abl018	
+24318	魂灵风息	贤者	40	magic/2ff_sage/mgc019	battle/magic_2fd_start
+24373	切割	钐镰客	39	ws/bt_2km_emp/ws_s01	
+24374	增盈切割	钐镰客	39	ws/bt_2km_emp/ws_s02	
+24375	地狱切割	钐镰客	39	ws/bt_2km_emp/ws_s03	
+24376	旋转钐割	钐镰客	39	ws/bt_2km_emp/ws_s05	
+24377	噩梦钐割	钐镰客	39	ws/bt_2km_emp/ws_s06	
+24378	死亡之影	钐镰客	39	ws/bt_2km_emp/ws_s04	
+24379	死亡之涡	钐镰客	39	ws/bt_2km_emp/ws_s07	
+24380	灵魂切割	钐镰客	39	ws/bt_2km_emp/ws_s08	
+24381	灵魂钐割	钐镰客	39	ws/bt_2km_emp/ws_s09	
+24382	绞决	钐镰客	39	ws/bt_2km_emp/ws_s10	
+24383	缢杀	钐镰客	39	ws/bt_2km_emp/ws_s11	
+24384	断首	钐镰客	39	ws/bt_2km_emp/ws_s12	
+24385	大丰收	钐镰客	39	ws/bt_2km_emp/ws_s16	
+24386	勾刃	钐镰客	39	magic/2km_riaper/mgc001	battle/magic_rr1_start
+24387	播魂种	钐镰客	39	magic/2km_riaper/mgc003	battle/magic_rr3_start
+24388	收获月	冒险者	0	magic/2km_riaper/mgc004	
+24389	隐匿挥割	钐镰客	39	ability/2km_reaper/abl001	
+24390	绞决爪	冒险者	0	ability/2km_reaper/abl011	
+24391	缢杀爪	冒险者	0	ability/2km_reaper/abl012	
+24392	束缚挥割	钐镰客	39	ability/2km_reaper/abl002	
+24393	暴食	钐镰客	39	ability/2km_reaper/abl003	
+24394	夜游魂衣	钐镰客	39	ability/2km_reaper/abl004	
+24395	虚无收割	冒险者	0	ws/bt_2km_emp/ws_s13	
+24396	交错收割	冒险者	0	ws/bt_2km_emp/ws_s14	
+24397	阴冷收割	冒险者	0	ws/bt_2km_emp/ws_s15	
+24398	团契	钐镰客	39	magic/2km_riaper/mgc002	battle/magic_rr2_start
+24399	夜游魂切割	冒险者	0	ability/2km_reaper/abl005	
+24400	夜游魂钐割	冒险者	0	ability/2km_reaper/abl006	
+24401	地狱入境	钐镰客	39	ability/2km_reaper/abl007	
+24402	地狱出境	钐镰客	39	ability/2km_reaper/abl013	
+24403	回退	冒险者	0	ability/2km_reaper/abl008	
+24404	神秘纹	钐镰客	39	ability/2km_reaper/abl010	
+24405	神秘环	钐镰客	39	ability/2km_reaper/abl009	
+24619	射击	冒险者	0	mon_sp/[SKL_ID]/mon_sp001	
+24620	射击	冒险者	0	mon_sp/[SKL_ID]/mon_sp002	
+24621	色相反转	冒险者	0	mon_sp/[SKL_ID]/mon_sp003	
+24622	色相反转	冒险者	0	mon_sp/[SKL_ID]/mon_sp003	
+24831	焦热	冒险者	0	ability/2rp_redmage/abl011	battle/magic_rdm_start
+24858	终结时刻	冒险者	0	limitbreak/lbk_reaper_lv3	limitbreak/lbk_reaper_start
+24859	术道恒久	冒险者	0	limitbreak/lbk_sage_lv3	limitbreak/lbk_sage_start
+24898	焦热	冒险者	0	magic/2rp_redmage/mgc022	battle/magic_rdm_start
+24917	短兵相接	冒险者	0	ability/2rp_redmage/abl001	
+24918	魔回刺	冒险者	0	ws/bt_2rp_emp/ws_s05	
+24919	魔交击斩	冒险者	0	ws/bt_2rp_emp/ws_s06	
+24920	魔连攻	冒险者	0	ws/bt_2rp_emp/ws_s07	
+25589	富矿的馈赠II	采矿工	16	gather/buff	
+25590	沃土的馈赠II	园艺工	17	gather/buff	
+25746	圣盾阵	骑士	19	ability/swd_knight/abl023	
+25747	偿赎剑	骑士	19	ability/swd_knight/abl025	
+25748	信念之剑	冒险者	0	magic/swd_knight/mgc004	
+25749	真理之剑	冒险者	0	magic/swd_knight/mgc005	
+25750	英勇之剑	冒险者	0	magic/swd_knight/mgc006	
+25751	原初的血气	战士	21	ability/2ax_warrior/abl025	
+25752	群山隆起	战士	21	ability/2ax_warrior/abl026	
+25753	蛮荒崩裂	战士	21	ws/bt_2ax_emp/ws_s13	
+25754	献奉	暗黑骑士	32	ability/2sw_dark/abl032	
+25755	腐秽黑暗	暗黑骑士	32	ability/no_mot_ability	
+25756	腐秽黑暗	冒险者	0	ability/2sw_dark/abl035	
+25757	暗影使者	暗黑骑士	32	ability/2sw_dark/abl034	
+25758	刚玉之心	绝枪战士	37	ability/2gb_bgb/abl019	
+25759	超高速	冒险者	0	ability/2gb_bgb/abl020	
+25760	倍攻	绝枪战士	37	ws/bt_2gb_emp/ws_s14	
+25761	铁山靠	格斗家	2	ws/bt_clw_clw/ws_s10	
+25762	轻身步法	武僧	20	ws/bt_clw_clw/ws_s15	
+25763	空鸣拳	武僧	20	ability/clw_monk/abl010	
+25765	翻天脚	冒险者	0	ws/bt_clw_clw/ws_s19	
+25766	疾风极意	武僧	20	ability/clw_monk/abl027	
+25767	破坏神脚	武僧	20	ws/bt_clw_clw/ws_s16	
+25768	凤凰舞	冒险者	0	ws/bt_clw_clw/ws_s17	
+25769	梦幻斗舞	冒险者	0	ws/bt_clw_clw/ws_s18	
+25770	龙眼苍穹	冒险者	0	ws/bt_2sp_emp/ws_s17	
+25771	苍穹刺	龙骑士	22	ws/bt_2sp_emp/ws_s15	
+25772	樱花缭乱	龙骑士	22	ws/bt_2sp_emp/ws_s16	
+25773	天龙点睛	龙骑士	22	ability/2sp_dragoon/abl021	
+25774	残影镰鼬	忍者	30	ability/dgr_ninja/abl030	
+25776	幻影野槌	冒险者	0	ws/bt_dgr_dgr/ws_s12	
+25777	月影雷兽爪	忍者	30	ws/bt_dgr_dgr/ws_s13	
+25778	月影雷兽牙	忍者	30	ws/bt_dgr_dgr/ws_s14	
+25780	风光	武士	34	ws/bt_2kt_emp/ws_s12	
+25781	奥义斩浪	武士	34	magic/2kt_samrai/mgc008	battle/magic_sam_start
+25782	回返斩浪	冒险者	0	magic/2kt_samrai/mgc009	
+25783	百首龙牙箭	吟游诗人	23	ws/bt_2bw_emp/ws_s17	
+25784	爆破箭	冒险者	0	ws/bt_2bw_emp/ws_s18	
+25785	光明神的最终乐章	吟游诗人	23	ability/2bw_bard/abl018	
+25786	霰弹枪	机工士	31	ws/bt_2gn_emp/ws_s19	
+25788	回转飞锯	机工士	31	ws/bt_2gn_emp/ws_s20	
+25789	即兴表演结束	冒险者	0	ability/chk_rdc/abl016	
+25790	提拉纳	冒险者	0	ability/chk_rdc/abl017	
+25791	扇舞·终	舞者	38	ability/chk_rdc/abl018	
+25792	流星舞	舞者	38	ws/bt_chk_chk/ws_s16	
+25793	冰冻	咒术师	7	magic/thm_black/mgc011	battle/magic_thm_start
+25794	高烈炎	黑魔法师	25	magic/thm_black/mgc008	battle/magic_blk_start
+25795	高冰冻	黑魔法师	25	magic/thm_black/mgc009	battle/magic_blk_start
+25796	详述	黑魔法师	25	ability/thm_black/abl018	
+25797	悖论	冒险者	0	magic/thm_black/mgc010	battle/magic_blk_start
+25798	宝石兽召唤	秘术师	26	normal/callpet_end	normal/callpet_start
+25799	守护之光	秘术师	26	ability/swl_summon/abl034	
+25800	以太蓄能	秘术师	26	magic/swl_summon/mgc016	
+25801	灼热之光	召唤师	27	ability/swl_summon/abl052	
+25802	红宝石召唤	秘术师	26	normal/callpet_end	normal/callpet_start
+25803	黄宝石召唤	秘术师	26	normal/callpet_end	normal/callpet_start
+25804	绿宝石召唤	秘术师	26	normal/callpet_end	normal/callpet_start
+25805	火神召唤	召唤师	27	normal/callpet_end	normal/callpet_start
+25806	土神召唤	召唤师	27	normal/callpet_end	normal/callpet_start
+25807	风神召唤	召唤师	27	normal/callpet_end	normal/callpet_start
+25808	红宝石毁灭	冒险者	0	magic/swl_summon/fieryblast	battle/magic_swl_start
+25809	黄宝石毁灭	冒险者	0	magic/swl_summon/fieryblast	battle/magic_swl_start
+25810	绿宝石毁灭	冒险者	0	magic/swl_summon/fieryblast	battle/magic_swl_start
+25811	红宝石毁坏	冒险者	0	magic/swl_summon/ruinla	battle/magic_swl_start
+25812	黄宝石毁坏	冒险者	0	magic/swl_summon/ruinla	battle/magic_swl_start
+25813	绿宝石毁坏	冒险者	0	magic/swl_summon/ruinla	battle/magic_swl_start
+25814	红宝石迸裂	冒险者	0	magic/swl_summon/mgc010	battle/magic_swl_start
+25815	黄宝石迸裂	冒险者	0	magic/swl_summon/mgc010	battle/magic_swl_start
+25816	绿宝石迸裂	冒险者	0	magic/swl_summon/mgc010	battle/magic_swl_start
+25817	红宝石毁荡	冒险者	0	magic/swl_summon/mgc001	battle/magic_sum_start
+25818	黄宝石毁荡	冒险者	0	magic/swl_summon/mgc001	battle/magic_sum_start
+25819	绿宝石毁荡	冒险者	0	magic/swl_summon/mgc001	battle/magic_sum_start
+25820	星极脉冲	冒险者	0	magic/swl_summon/mgc020	battle/magic_sum_start
+25821	星极核爆	冒险者	0	magic/swl_summon/mgc026	battle/magic_sum_start
+25823	红宝石之仪	冒险者	0	magic/swl_summon/mgc017	battle/magic_sum_start
+25824	黄宝石之仪	冒险者	0	magic/swl_summon/mgc018	battle/magic_sum_start
+25825	绿宝石之仪	冒险者	0	magic/swl_summon/mgc019	battle/magic_sum_start
+25826	三重灾祸	召唤师	27	magic/swl_summon/mgc022	battle/magic_sum_start
+25827	红宝石灾祸	冒险者	0	magic/swl_summon/mgc022	battle/magic_sum_start
+25828	黄宝石灾祸	冒险者	0	magic/swl_summon/mgc022	battle/magic_sum_start
+25829	绿宝石灾祸	冒险者	0	magic/swl_summon/mgc022	battle/magic_sum_start
+25830	苏生之炎	冒险者	0	ability/swl_summon/abl047	
+25831	不死鸟召唤	冒险者	0	ability/swl_summon/abl038	
+25832	红宝石灾变	冒险者	0	magic/swl_summon/mgc023	battle/magic_sum_start
+25833	黄宝石灾变	冒险者	0	magic/swl_summon/mgc024	battle/magic_sum_start
+25834	绿宝石灾变	冒险者	0	magic/swl_summon/mgc025	battle/magic_sum_start
+25835	深红旋风	冒险者	0	magic/swl_summon/mgc027	
+25836	山崩	冒险者	0	ability/swl_summon/abl048	
+25837	螺旋气流	冒险者	0	magic/swl_summon/mgc028	battle/magic_sum_start
+25838	火神召唤II	召唤师	27	normal/callpet_end	normal/callpet_start
+25839	土神召唤II	召唤师	27	normal/callpet_end	normal/callpet_start
+25840	风神召唤II	召唤师	27	normal/callpet_end	normal/callpet_start
+25855	赤暴雷	赤魔法师	35	magic/2rp_redmage/mgc023	battle/magic_rdm_start
+25856	赤暴风	赤魔法师	35	magic/2rp_redmage/mgc024	battle/magic_rdm_start
+25857	抗死	赤魔法师	35	ability/2rp_redmage/abl018	
+25858	决断	冒险者	0	magic/2rp_redmage/mgc025	battle/magic_rdm_start
+25859	闪灼	白魔法师	24	magic/cnj_white/mgc006	battle/magic_wht_start
+25860	豪圣	白魔法师	24	magic/cnj_white/mgc007	battle/magic_wht_start
+25861	水流幕	白魔法师	24	ability/cnj_white/abl019	
+25862	礼仪之铃	白魔法师	24	magic/cnj_white/mgc008	
+25865	极炎法	学者	28	magic/swl_summon/mgc014	battle/magic_sch_start
+25866	裂阵法	学者	28	ability/swl_summon/abl046	battle/magic_sch_start
+25867	生命回生法	学者	28	ability/swl_summon/abl045	
+25868	疾风怒涛之计	学者	28	magic/swl_summon/mgc031	
+25871	落陷凶星	占星术士	33	magic/2gl_astro/mgc017	battle/magic_ast_start
+25872	中重力	占星术士	33	magic/2gl_astro/mgc022	battle/magic_lgi_start
+25873	擢升	占星术士	33	ability/2gl_astro/abl029	
+25874	大宇宙	占星术士	33	magic/2gl_astro/mgc019	battle/magic_lgi_start
+25875	小宇宙	占星术士	33	ability/2gl_astro/abl030	
+25882	爆裂脚	冒险者	0	ability/clw_monk/abl028	
+25885	深红强袭	冒险者	0	magic/swl_summon/mgc029	
+26224	诊断	冒险者	0	magic/2ff_sage/mgc002	battle/magic_2fb_start
+26225	鼓励	冒险者	0	ability/2rp_redmage/abl006	
+26231	魔导加农炮	冒险者	0	mount_sp/d0002/mon_sp001	
+26232	魔导加农散弹炮	冒险者	0	mount_sp/d0002/mon_sp004	
+26233	高功率魔导加农炮	冒险者	0	mount_sp/d0002/mon_sp005	
+26249	先锋剑	冒险者	0	ws/bt_swd_sld/wsh001	
+26250	暴乱剑	冒险者	0	ws/bt_swd_sld/ws_s07	
+26251	战女神之怒	冒险者	0	ws/bt_swd_sld/ws_s02	
+26252	战逃反应	冒险者	0	ability/swd_knight/abl008	
+26253	铁壁	冒险者	0	ability/swd_knight/abl001	
+26521	理智同兴	采矿工	16	gather/libura	
+26522	理智同兴	园艺工	17	gather/libura	
+26804	沙利亚克的恩宠	捕鱼人	18	fishing/gp_recovery	
+26805	熟练渔技	捕鱼人	18	ability/no_mot_ability	
+26806	大鱼猎手	捕鱼人	18	ability/no_mot_ability	
+26870	聚精鱼眼	捕鱼人	18	harpoon/swim_under_hr_buff	
+26871	闭气	捕鱼人	18	harpoon/swim_under_hr_buff	
+26872	电水流	捕鱼人	18	harpoon/swim_under_hr_buff	
+26890	退魔提灯	冒险者	0	pc_contentsaction/lantern	
+26891	导魂圣水	冒险者	0	pc_contentsaction/holywater	
+26988	风脉仪	冒险者	0	normal/item_end	normal/item_start
+27042	莱韦耶勒尔诊断	冒险者	0	magic/2ff_sage/mgc007	battle/magic_2fb_start
+27043	预后	冒险者	0	magic/2ff_sage/mgc003	battle/magic_2fb_start
+27044	莱韦耶勒尔灵橡清汁	冒险者	0	ability/2ff_sage/abl007	
+27045	注药III	冒险者	0	magic/2ff_sage/mgc015	battle/magic_2fc_start
+27046	ルヴェユール・トキシコンII	冒险者	0	magic/2ff_sage/mgc018	battle/magic_2fc_start
+27047	莱韦耶勒尔箭毒	冒险者	0	magic/2ff_sage/mgc011	battle/magic_2fc_start
+27048	赤火炎	冒险者	0	magic/2rp_redmage/mgc008	battle/magic_rdm_start
+27049	赤疾风	冒险者	0	magic/2rp_redmage/mgc005	battle/magic_rdm_start
+27050	赤飞石	冒险者	0	magic/2rp_redmage/mgc009	battle/magic_rdm_start
+27051	赤闪雷	冒险者	0	magic/2rp_redmage/mgc004	battle/magic_rdm_start
+27052	赤核爆	冒险者	0	magic/2rp_redmage/mgc020	battle/magic_rdm_start
+27053	深红救世	冒险者	0	human_sp/c0604/human_sp003	
+27054	短兵相接	冒险者	0	ability/2rp_redmage/abl001	
+27055	魔回刺	冒险者	0	ws/bt_2rp_emp/ws_s05	
+27056	魔交击斩	冒险者	0	ws/bt_2rp_emp/ws_s06	
+27057	魔连攻	冒险者	0	ws/bt_2rp_emp/ws_s07	
+27058	交剑	冒险者	0	ability/2rp_redmage/abl010	
+27059	赤神圣	冒险者	0	magic/2rp_redmage/mgc021	battle/magic_rdm_start
+27060	六分反击	冒险者	0	ability/2rp_redmage/abl005	
+27061	赤治疗	冒险者	0	magic/2rp_redmage/mgc010	battle/magic_rdm_start
+27062	赤红诺言	冒险者	0	human_sp/c0604/human_sp005	human_sp/human_sp_b_start
+27427	利刃斩	冒险者	0	ws/bt_2gb_emp/ws_s01	
+27428	残暴弹	冒险者	0	ws/bt_2gb_emp/ws_s02	
+27429	迅连斩	冒险者	0	ws/bt_2gb_emp/ws_s05	
+27430	星云	冒险者	0	ability/2gb_bgb/abl005	
+27432	疾隐	冒险者	0	eureka/erk017	
+27433	终招	冒险者	0	human_sp/c0101/human_sp110	
+27434	嗅觉干扰弹	冒险者	0	pc_contentsaction/item19	
+27523	三重提钩	捕鱼人	18	ability/no_mot_ability	
+28302	家族活动	冒险者	0	mount_sp/m0737/mon_sp001	
+28326	战逃反应	冒险者	0	ability/swd_knight/abl008	
+28439	莱韦耶勒尔注药III	冒险者	0	magic/2ff_sage/mgc017	battle/magic_2fc_start
+28509	礼仪之铃	冒险者	0	ability/cnj_white/abl021	
+29054	防御	冒险者	0	ability/pvp_common/abl035_start	
+29055	军用圣灵药	冒险者	0	normal/item_pvp_end	normal/item_start
+29056	净化	冒险者	0	ability/pvp_common/abl006	
+29057	冲刺	冒险者	0	ability/no_mot_sprint	
+29058	先锋剑	骑士	19	ws/bt_swd_sld/wsh003	
+29059	暴乱剑	骑士	19	ws/bt_swd_sld/ws_s23	
+29060	王权剑	骑士	19	ws/bt_swd_sld/ws_s24	
+29061	赎罪剑	骑士	19	ws/bt_swd_sld/ws_s20	
+29062	圣灵	骑士	19	magic/swd_knight/mgc007	battle/magic_pld_start
+29065	调停	骑士	19	ws/bt_swd_sld/ws_s19	
+29066	卫护	骑士	19	ability/swd_knight/abl026	
+29067	圣盾阵	骑士	19	ability/swd_knight/abl023	
+29068	圣盾阵	骑士	19	ability/swd_knight/abl027	
+29069	列阵	骑士	19	ability/pvp_common/abl014	
+29071	信念之剑	骑士	19	magic/swd_knight/mgc004	
+29072	真理之剑	骑士	19	magic/swd_knight/mgc005	
+29073	英勇之剑	骑士	19	magic/swd_knight/mgc008	
+29074	重劈	战士	21	ws/bt_2ax_emp/wsh006	
+29075	凶残裂	战士	21	ws/bt_2ax_emp/wsh007	
+29076	暴风斩	战士	21	ws/bt_2ax_emp/wsh008	
+29077	狂魂	战士	21	ws/bt_2ax_emp/ws_s18	
+29078	裂石飞环	战士	21	ws/bt_2ax_emp/ws_s19	
+29079	猛攻	战士	21	ability/2ax_warrior/abl033	
+29080	群山隆起	战士	21	ability/2ax_warrior/abl032	
+29081	献身	战士	21	ability/2ax_warrior/abl027	
+29082	原初的血气	战士	21	ability/2ax_warrior/abl025	
+29083	原初的怒号	战士	21	ability/pvp_common/abl015	
+29084	蛮荒崩裂	战士	21	ws/bt_2ax_emp/ws_s17	
+29085	重斩	暗黑骑士	32	ws/bt_2sw_emp/ws_s17	
+29086	吸收斩	暗黑骑士	32	ws/bt_2sw_emp/ws_s18	
+29087	噬魂斩	暗黑骑士	32	ws/bt_2sw_emp/ws_s19	
+29088	血溅	暗黑骑士	32	ws/bt_2sw_emp/ws_s09	
+29091	暗影使者	暗黑骑士	32	ability/2sw_dark/abl042	
+29092	跳斩	暗黑骑士	32	ability/2sw_dark/abl043	
+29093	至黑之夜	暗黑骑士	32	ability/2sw_dark/abl024	
+29094	腐秽大地	暗黑骑士	32	ability/2sw_dark/abl037	
+29095	腐秽黑暗	暗黑骑士	32	ability/no_mot_ability	
+29096	腐秽黑暗	暗黑骑士	32	ability/2sw_dark/abl035	
+29097	夜昏	暗黑骑士	32	ability/pvp_common/abl016	
+29098	利刃斩	绝枪战士	37	ws/bt_2gb_emp/ws_s19	
+29099	残暴弹	绝枪战士	37	ws/bt_2gb_emp/ws_s20	
+29100	迅连斩	绝枪战士	37	ws/bt_2gb_emp/ws_s21	
+29101	爆发击	绝枪战士	37	ws/bt_2gb_emp/ws_s11	
+29102	烈牙	绝枪战士	37	ws/bt_2gb_emp/ws_s22	
+29103	猛兽爪	绝枪战士	37	ws/bt_2gb_emp/ws_s23	
+29104	凶禽爪	绝枪战士	37	ws/bt_2gb_emp/ws_s24	
+29107	超高速	绝枪战士	37	ability/2gb_bgb/abl020	
+29108	撕喉	绝枪战士	37	ability/2gb_bgb/abl027	
+29109	裂膛	绝枪战士	37	ability/2gb_bgb/abl028	
+29110	穿目	绝枪战士	37	ability/2gb_bgb/abl029	
+29123	粗分斩	绝枪战士	37	ability/2gb_bgb/abl030	
+29128	爆破领域	绝枪战士	37	ability/2gb_bgb/abl026	
+29130	连续剑	绝枪战士	37	ability/pvp_common/abl017_start	
+29131	终结击	绝枪战士	37	ability/pvp_common/abl019	
+29155	捕获	冒险者	0	pc_contentsaction/ami_swing	
+29223	闪灼	白魔法师	24	magic/cnj_white/mgc013	battle/magic_wht_start
+29224	救疗	白魔法师	24	magic/cnj_white/carel2	battle/magic_cnj_start
+29225	愈疗	白魔法师	24	magic/cnj_white/mgc012	battle/magic_cnj_start
+29226	苦难之心	白魔法师	24	ability/cnj_white/abl016	
+29227	水流幕	白魔法师	24	ability/cnj_white/abl019	
+29228	自然的奇迹	白魔法师	24	ability/cnj_white/abl020	
+29229	炽天强袭	白魔法师	24	ability/cnj_white/abl025	
+29230	涤罪之心	白魔法师	24	ability/pvp_common/abl020	
+29231	极炎法	学者	28	magic/swl_summon/mgc014	battle/magic_sch_start
+29232	鼓舞激励之策	学者	28	magic/swl_summon/mgc054	battle/magic_sch_start
+29233	蛊毒法	学者	28	magic/swl_summon/mgc040	battle/magic_sch_start
+29234	展开战术	学者	28	ability/swl_summon/abl049	
+29236	疾风怒涛之计	学者	28	magic/swl_summon/mgc015	
+29237	炽天召唤	学者	28	ability/swl_summon/abl043	
+29242	落陷凶星	占星术士	33	magic/2gl_astro/mgc024	battle/magic_ast_start
+29243	吉星相位	占星术士	33	magic/2gl_astro/mgc002	battle/magic_ast_start
+29244	中重力	占星术士	33	magic/2gl_astro/mgc023	battle/magic_lgi_start
+29246	落陷凶星	占星术士	33	magic/2gl_astro/mgc024	battle/magic_ast_start
+29247	吉星相位	占星术士	33	magic/2gl_astro/mgc002	battle/magic_ast_start
+29248	中重力	占星术士	33	magic/2gl_astro/mgc023	battle/magic_lgi_start
+29253	大宇宙	占星术士	33	magic/2gl_astro/mgc032	battle/magic_lgi_start
+29254	小宇宙	占星术士	33	ability/2gl_astro/abl030	
+29255	星河漫天	占星术士	33	ability/pvp_common/abl021	
+29256	注药III	贤者	40	magic/2ff_sage/mgc015	battle/magic_2fc_start
+29257	均衡注药III	贤者	40	magic/2ff_sage/mgc026	battle/magic_2fc_start
+29258	均衡	贤者	40	magic/2ff_sage/mgc006	
+29259	发炎III	贤者	40	magic/2ff_sage/mgc025	battle/magic_2fc_start
+29260	魂灵风息	贤者	40	magic/2ff_sage/mgc024	battle/magic_2fd_start
+29261	神翼	贤者	40	ability/2ff_sage/abl005	
+29262	箭毒	贤者	40	magic/2ff_sage/mgc027	battle/magic_2fc_start
+29263	箭毒II	贤者	40	magic/2ff_sage/mgc028	battle/magic_2fc_start
+29264	心关	贤者	40	ability/2ff_sage/abl001	
+29266	中庸之道	贤者	40	ability/pvp_common/abl022	
+29267	中庸之道	贤者	40	ability/pvp_common/abl022	
+29382	祈祷色粉：红色	冒险者	0	mount_sp/m0778/mon_sp001	
+29383	祈祷色粉：黄色	冒险者	0	mount_sp/m0778/mon_sp002	
+29384	祈祷色粉：蓝色	冒险者	0	mount_sp/m0778/mon_sp003	
+29385	祈祷色粉：红色	冒险者	0	mount_sp/m0778/mon_sp001	
+29386	祈祷色粉：黄色	冒险者	0	mount_sp/m0778/mon_sp002	
+29387	祈祷色粉：蓝色	冒险者	0	mount_sp/m0778/mon_sp003	
+29388	祈祷色粉：彩虹色	冒险者	0	mount_sp/m0778/mon_sp004	
+29391	强劲射击	吟游诗人	23	magic/2bw_bard/mgc007	battle/magic_brd_start
+29392	完美音调	吟游诗人	23	ability/2bw_bard/abl020	
+29393	绝峰箭	吟游诗人	23	ws/bt_2bw_emp/ws_s23	
+29394	爆破箭	吟游诗人	23	ws/bt_2bw_emp/ws_s24	
+29395	默者的夜曲	吟游诗人	23	magic/2bw_bard/mgc005	
+29399	后跃射击	吟游诗人	23	ws/bt_2bw_emp/ws_s25	
+29400	光阴神的礼赞凯歌	吟游诗人	23	magic/2bw_bard/mgc002	
+29401	英雄的幻想曲	吟游诗人	23	ability/pvp_common/abl031	
+29402	蓄力冲击	机工士	31	magic/2gn_machinist/mgc001	battle/magic_mcn_start
+29403	热冲击	机工士	31	ws/bt_2gn_emp/ws_s10	
+29404	霰弹枪	机工士	31	ws/bt_2gn_emp/ws_s24	
+29405	钻头	机工士	31	ws/bt_2gn_emp/ws_s27	
+29406	毒菌冲击	机工士	31	ws/bt_2gn_emp/ws_s25	
+29407	空气锚	机工士	31	ws/bt_2gn_emp/ws_s18	
+29408	回转飞锯	机工士	31	ws/bt_2gn_emp/ws_s26	
+29409	野火	机工士	31	ability/2gn_machin/abl004	
+29410	野火	机工士	31	ability/2gn_machin/abl029	
+29411	野火	机工士	31	ability/2gn_machin/abl029	
+29412	象式浮空炮塔	机工士	31	ability/2gn_machin/abl013	
+29414	分析	机工士	31	ability/2gn_machin/abl022	
+29415	魔弹射手	机工士	31	ability/pvp_common/abl032	
+29416	瀑泻	舞者	38	ws/bt_chk_chk/ws_s26	
+29417	喷泉	舞者	38	ws/bt_chk_chk/ws_s02	
+29418	逆瀑泻	舞者	38	ws/bt_chk_chk/ws_s03	
+29419	坠喷泉	舞者	38	ws/bt_chk_chk/ws_s27	
+29420	剑舞	舞者	38	ws/bt_chk_chk/ws_s28	
+29421	流星舞	舞者	38	ws/bt_chk_chk/ws_s24	
+29422	刃舞	舞者	38	ws/bt_chk_chk/ws_s17_start	
+29423	刃舞·终	舞者	38	ws/bt_chk_chk/ws_s19	
+29424	刃舞·终	舞者	38	ws/bt_chk_chk/ws_s19	
+29425	刃舞·终	舞者	38	ws/bt_chk_chk/ws_s19	
+29426	刃舞·终	舞者	38	ws/bt_chk_chk/ws_s19	
+29427	刃舞·终	舞者	38	ws/bt_chk_chk/ws_s19	
+29428	扇舞	舞者	38	ability/chk_rdc/abl019	
+29429	治疗之华尔兹	舞者	38	ability/chk_rdc/abl020	
+29430	前冲步	舞者	38	ability/chk_rdc/abl013	
+29431	闭式舞姿	舞者	38	ability/chk_rdc/abl010	
+29432	行列舞	舞者	38	ability/pvp_common/abl047	
+29463	吼叫	冒险者	0	mount_sp/m0766/mon_sp001	
+29464	摇尾	冒险者	0	mount_sp/m0766/mon_sp002	
+29465	失落	冒险者	0	mount_sp/m0766/mon_sp003	
+29469	终结击	绝枪战士	37	ability/no_mot_ability	
+29470	刃舞·终	舞者	38	ability/no_mot_ability	
+29475	双龙脚	武僧	20	ws/bt_clw_clw/ws_s31	
+29476	双掌打	武僧	20	ws/bt_clw_clw/ws_s33	
+29477	破碎拳	武僧	20	ws/bt_clw_clw/ws_s32	
+29478	梦幻斗舞	武僧	20	ws/bt_clw_clw/ws_s29	
+29481	凤凰舞	武僧	20	ws/bt_clw_clw/ws_s27	
+29482	金刚极意	武僧	20	ability/clw_monk/abl020	
+29483	金刚转轮	武僧	20	ability/clw_monk/abl030	
+29484	轻身步法	武僧	20	ws/bt_clw_clw/ws_s15	
+29485	陨石冲击	武僧	20	ability/pvp_common/abl023	
+29486	龙眼雷电	龙骑士	22	ws/bt_2sp_emp/ws_s21	
+29487	龙牙龙爪	龙骑士	22	ws/bt_2sp_emp/ws_s22	
+29488	龙尾大回旋	龙骑士	22	ws/bt_2sp_emp/ws_s23	
+29489	苍穹刺	龙骑士	22	ws/bt_2sp_emp/ws_s15	
+29490	樱花缭乱	龙骑士	22	ws/bt_2sp_emp/ws_s24	
+29491	武神枪	龙骑士	22	ability/2sp_dragoon/abl030	
+29492	死者之岸	龙骑士	22	ability/2sp_dragoon/abl031	
+29493	高跳	龙骑士	22	ability/2sp_dragoon/abl023	
+29494	回避跳跃	龙骑士	22	ability/2sp_dragoon/abl008	
+29495	天龙点睛	龙骑士	22	ability/2sp_dragoon/abl022	
+29496	恐惧咆哮	龙骑士	22	ability/2sp_dragoon/abl024	
+29497	冲天	龙骑士	22	ability/pvp_common/abl024_start	
+29498	天穹破碎	龙骑士	22	ability/pvp_common/abl026	
+29499	天穹破碎	龙骑士	22	ability/no_mot_ability	
+29500	双刃旋	忍者	30	ws/bt_dgr_dgr/ws_s18	
+29501	绝风	忍者	30	ws/bt_dgr_dgr/ws_s19	
+29502	旋风刃	忍者	30	ws/bt_dgr_dgr/ws_s20	
+29503	断绝	忍者	30	ability/dgr_ninja/abl043	
+29504	劫火灭却之术	忍者	30	ability/dgr_ninja/abl040	
+29505	风魔手里剑	忍者	30	magic/dgr_ninja/mgc002	
+29506	冰晶乱流之术	忍者	30	ability/dgr_ninja/abl041	
+29507	三印自在	忍者	30	ability/dgr_ninja/abl010	
+29508	命水	忍者	30	ability/dgr_ninja/abl026	
+29510	月影雷兽爪	忍者	30	ws/bt_dgr_dgr/ws_s17	
+29511	分身之术	忍者	30	ability/dgr_ninja/abl029	
+29512	风遁之术	忍者	30	magic/dgr_ninja/fuuton	
+29513	缩地	忍者	30	ability/dgr_ninja/abl009	
+29514	土遁之术	忍者	30	magic/dgr_ninja/doton	
+29515	星遁天诛	忍者	30	ability/pvp_common/abl027	
+29516	星遁天诛	忍者	30	ability/pvp_common/abl027	
+29523	雪风	武士	34	ws/bt_2kt_emp/ws_s16	
+29524	月光	武士	34	ws/bt_2kt_emp/ws_s17	
+29525	花车	武士	34	ws/bt_2kt_emp/ws_s18	
+29526	冰雪	武士	34	ws/bt_2kt_emp/ws_s11	
+29527	满月	武士	34	ws/bt_2kt_emp/ws_s14	
+29528	樱花	武士	34	ws/bt_2kt_emp/ws_s15	
+29530	奥义斩浪	武士	34	magic/2kt_samrai/mgc014	battle/magic_sam_start
+29531	回返斩浪	武士	34	magic/2kt_samrai/mgc015	
+29532	必杀剑·早天	武士	34	ability/2kt_samrai/abl016	
+29533	必杀剑·地天	武士	34	ability/2kt_samrai/abl014	
+29535	刀背击打	武士	34	ability/2kt_samrai/abl022	
+29536	明镜止水	武士	34	ability/2kt_samrai/abl010	
+29537	斩铁剑	武士	34	ability/pvp_common/abl028	
+29538	切割	钐镰客	39	ws/bt_2km_emp/ws_s23	
+29539	增盈切割	钐镰客	39	ws/bt_2km_emp/ws_s24	
+29540	地狱切割	钐镰客	39	ws/bt_2km_emp/ws_s25	
+29543	虚无收割	钐镰客	39	ws/bt_2km_emp/ws_s26	
+29544	交错收割	钐镰客	39	ws/bt_2km_emp/ws_s27	
+29545	收获月	钐镰客	39	magic/2km_riaper/mgc006	
+29546	大丰收	钐镰客	39	ws/bt_2km_emp/ws_s21	
+29547	束缚挥割	钐镰客	39	ability/2km_reaper/abl018	
+29548	夜游魂钐割	钐镰客	39	ability/2km_reaper/abl019	
+29549	斩首令	钐镰客	39	ability/2km_reaper/abl014	
+29550	地狱入境	钐镰客	39	ability/2km_reaper/abl007	
+29551	回退	钐镰客	39	ability/2km_reaper/abl008	
+29552	神秘纹	钐镰客	39	ability/2km_reaper/abl010	
+29553	暗夜游魂	钐镰客	39	ability/pvp_common/abl029	
+29554	团契	钐镰客	39	magic/2km_riaper/mgc005	battle/magic_rr2_start
+29557	连续剑	绝枪战士	37	ability/no_mot_ability	
+29558	刃舞	舞者	38	ability/no_mot_ability	
+29559	幻影野槌	忍者	30	ws/bt_dgr_dgr/ws_s12	
+29573	海岛返回	冒险者	0	normal/dejon	normal/magic_cmn_start
+29603	斩首令	钐镰客	39	ability/2km_reaper/abl015	
+29649	火炎	黑魔法师	25	magic/thm_black/mgc021	battle/magic_thm_start
+29650	炽炎	黑魔法师	25	magic/thm_black/mgc022	battle/magic_blk_start
+29651	核爆	黑魔法师	25	magic/thm_black/mgc018	battle/magic_blk_start
+29653	冰结	黑魔法师	25	magic/thm_black/mgc023	battle/magic_thm_start
+29654	冰澈	黑魔法师	25	magic/thm_black/mgc024	battle/magic_blk_start
+29655	玄冰	黑魔法师	25	magic/thm_black/mgc019	battle/magic_blk_start
+29657	磁暴	黑魔法师	25	magic/thm_black/mgc012	battle/magic_blk_start
+29658	异言	黑魔法师	25	magic/thm_black/mgc020	battle/magic_blk_start
+29660	以太步	黑魔法师	25	ability/thm_black/abl008	
+29662	灵魂共鸣	黑魔法师	25	ability/pvp_common/abl030	
+29663	悖论	黑魔法师	25	magic/thm_black/mgc025	battle/magic_blk_start
+29664	毁荡	召唤师	27	magic/swl_summon/mgc001	battle/magic_sum_start
+29665	星极脉冲	召唤师	27	magic/swl_summon/mgc020	battle/magic_sum_start
+29666	灵泉之炎	召唤师	27	ability/swl_summon/abl064	battle/magic_sum_start
+29667	深红旋风	召唤师	27	magic/swl_summon/mgc042	
+29668	深红强袭	召唤师	27	magic/swl_summon/mgc043	
+29669	螺旋气流	召唤师	27	magic/swl_summon/mgc030	battle/magic_sum_start
+29670	守护之光	召唤师	27	ability/swl_summon/abl051	
+29671	山崩	召唤师	27	ability/swl_summon/abl063	battle/magic_sum_start
+29673	龙神召唤	召唤师	27	ability/swl_summon/abl032	
+29678	不死鸟召唤	召唤师	27	ability/swl_summon/abl038	
+29699	短兵相接	赤魔法师	35	ability/2rp_redmage/abl021	
+29700	移转	赤魔法师	35	ability/2rp_redmage/abl022	
+29707	月影雷兽牙	忍者	30	ws/bt_dgr_dgr/ws_s15	
+29711	自愈	冒险者	0	ability/pvp_common/abl011	
+29716	连环计	学者	28	ability/swl_summon/abl065	
+29718	咔啦啦雷电	冒险者	0	mount_sp/m0797/mon_sp001	
+29719	咔啦啦雷电	冒险者	0	mount_sp/m0797/mon_sp001	
+29720	礼物幻影	冒险者	0	mount_sp/m0623/mon_sp001	
+29735	防御	冒险者	0	ability/no_mot_ability	
+29736	混沌旋风	战士	21	ws/bt_2ax_emp/ws_s16	
+29738	暗影使者	暗黑骑士	32	ability/2sw_dark/abl042	
+30868	撑伞起舞	冒险者	0	ornament_sp/m6001/onm_sp01	
+30869	确认下雨	冒险者	0	ornament_sp/m6001/onm_sp02	
+30896	爆炎	黑魔法师	25	magic/thm_black/mgc026	battle/magic_thm_start
+30897	冰封	黑魔法师	25	magic/thm_black/mgc027	battle/magic_thm_start
+31116	跃动舞步！	冒险者	0	mount_sp/m0773/mon_sp001	
+31117	跃动舞步！	冒险者	0	mount_sp/m0773/mon_sp001	
+31314	海岛冲刺	冒险者	0	ability/no_mot_sprint	
+31393	绅士碎击	冒险者	0	human_sp/c0101/human_sp156	battle/mon_sp_a_start
+31394	绅士刺	冒险者	0	human_sp/c0101/human_sp157	battle/mon_sp_a_start
+31395	绅士之怒	冒险者	0	human_sp/c0101/human_sp158	battle/mon_sp_a_start
+31396	曼德维尔双重碎颈臂	冒险者	0	human_sp/c0101/human_sp154	battle/mon_sp_a_start
+31397	曼德维尔飞身踢	冒险者	0	human_sp/c0101/human_sp153	battle/mon_sp_a_start
+31398	曼德维尔冲刺	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	battle/mon_sp_a_start
+31399	极限技	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	battle/mon_sp_a_start
+31472	吓唬人	冒险者	0	pc_contentsaction/pc_cnt015	
+31785	刻斩	冒险者	0	human_sp/c0101/human_sp164	
+31786	切割	冒险者	0	ws/bt_2km_emp/ws_s01	
+31787	增盈切割	冒险者	0	ws/bt_2km_emp/ws_s02	
+31788	地狱切割	冒险者	0	ws/bt_2km_emp/ws_s03	
+31789	旋转钐割	冒险者	0	ws/bt_2km_emp/ws_s05	
+31790	噩梦钐割	冒险者	0	ws/bt_2km_emp/ws_s06	
+31792	ハーベストマーク	冒险者	0	ws/bt_2km_emp/ws_s07	
+31793	アルケインクレスト	冒险者	0	ability/2km_reaper/abl010	
+31794	团契	冒险者	0	human_sp/c0101/human_sp168	battle/magic_rr1_start
+32065	解除钢铁信念	冒险者	0	ability/no_mot_ability	
+32066	解除守护	冒险者	0	ability/no_mot_ability	
+32067	解除深恶痛绝	冒险者	0	ability/no_mot_ability	
+32068	解除王室亲卫	冒险者	0	ability/no_mot_ability	
+32144	魔土器：スロウガ	冒险者	0	pc_contentsaction/item20	
+32145	魔土器：ミールストーム	冒险者	0	pc_contentsaction/item21	
+32146	魔土器：ドレッドノート化	冒险者	0	pc_contentsaction/item22	
+32542	亚灵复制体生成器	冒险者	0	pc_contentsaction/pc_cnt018	
+32781	猛碎	冒险者	0	mon_sp/[SKL_ID]/mon_sp014	
+32782	粉碎铁球	冒险者	0	mon_sp/[SKL_ID]/mon_sp015	battle/mon_sp_a_start
+33013	浴血	冒险者	0	rol_common/rol012	
+33215	单色技巧舞步结束	冒险者	0	battle/0framehit	
+33216	双色技巧舞步结束	冒险者	0	battle/0framehit	
+33217	三色技巧舞步结束	冒险者	0	battle/0framehit	
+33218	四色技巧舞步结束	冒险者	0	battle/0framehit	
+33268	彩蛋幻影	冒险者	0	mount_sp/m0054/mon_sp002	
+33269	彩蛋幻影	冒险者	0	mount_sp/m0054/mon_sp002	
+34563	哥布林乱拳	青魔法师	36	magic/rod_aoz/mgc099	battle/magic_aoz_start
+34564	大回旋	青魔法师	36	magic/rod_aoz/mgc100	battle/magic_aoz_start
+34565	刺阵	青魔法师	36	magic/rod_aoz/mgc101	battle/magic_aoz_start
+34566	补水	青魔法师	36	magic/rod_aoz/mgc102	battle/magic_aoz_start
+34567	魔法吐息	青魔法师	36	magic/rod_aoz/mgc103	battle/magic_aoz_start
+34568	兽魂的愤怒	青魔法师	36	magic/rod_aoz/mgc104	battle/magic_aoz_start
+34569	玩泥球	青魔法师	36	magic/rod_aoz/mgc105	battle/magic_aoz_start
+34570	大扫除	青魔法师	36	magic/rod_aoz/mgc106	battle/magic_aoz_start
+34571	红宝石电圈	青魔法师	36	magic/rod_aoz/mgc107	battle/magic_aoz_start
+34572	魔之符文	青魔法师	36	magic/rod_aoz/mgc108	battle/magic_aoz_start
+34573	空间转换	青魔法师	36	magic/rod_aoz/mgc109	battle/magic_aoz_start
+34574	加强信音	青魔法师	36	magic/rod_aoz/mgc110	battle/magic_aoz_start
+34575	力场	青魔法师	36	magic/rod_aoz/mgc111	battle/magic_aoz_start
+34576	断罪飞翔	青魔法师	36	magic/rod_aoz/mgc112	battle/magic_aoz_start
+34577	激射眼	青魔法师	36	magic/rod_aoz/mgc113	battle/magic_aoz_start
+34578	糖果手杖	青魔法师	36	magic/rod_aoz/mgc114	battle/magic_aoz_start
+34579	必灭之炎	青魔法师	36	magic/rod_aoz/mgc115	battle/magic_aoz_start
+34580	咕噜咕噜	青魔法师	36	ability/rod_aoz/abl015	
+34581	启示录	青魔法师	36	ability/rod_aoz/abl016_start	
+34582	终有一死	青魔法师	36	ability/rod_aoz/abl018	
+34606	咬噬尖齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s01	
+34607	穿裂尖齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s02	
+34608	猛袭利齿	冒险者	0	ws/bt_bld_bld/ws_s03	
+34609	疾速利齿	冒险者	0	ws/bt_bld_bld/ws_s04	
+34610	侧击獠齿	冒险者	0	ws/bt_bld_bld/ws_s05	
+34611	侧裂獠齿	冒险者	0	ws/bt_bld_bld/ws_s06	
+34612	背击獠齿	冒险者	0	ws/bt_bld_bld/ws_s07	
+34613	背裂獠齿	冒险者	0	ws/bt_bld_bld/ws_s08	
+34614	咬噬尖牙	蝰蛇剑士	41	ws/bt_bld_bld/ws_s09	
+34615	穿裂尖牙	蝰蛇剑士	41	ws/bt_bld_bld/ws_s10	
+34616	猛袭利牙	冒险者	0	ws/bt_bld_bld/ws_s11	
+34617	疾速利牙	冒险者	0	ws/bt_bld_bld/ws_s12	
+34618	乱击獠牙	冒险者	0	ws/bt_bld_bld/ws_s13	
+34619	乱裂獠牙	冒险者	0	ws/bt_bld_bld/ws_s14	
+34620	强碎灵蛇	蝰蛇剑士	41	ws/bt_bld_bld/ws_s15	
+34621	猛袭盘蛇	蝰蛇剑士	41	ws/bt_bld_bld/ws_s16	
+34622	疾速盘蛇	蝰蛇剑士	41	ws/bt_bld_bld/ws_s17	
+34623	强碎灵蝰	蝰蛇剑士	41	ws/bt_bld_bld/ws_s18	
+34624	猛袭盘蝰	蝰蛇剑士	41	ws/bt_bld_bld/ws_s19	
+34625	疾速盘蝰	蝰蛇剑士	41	ws/bt_bld_bld/ws_s20	
+34626	祖灵降临	蝰蛇剑士	41	ws/bt_bld_bld/ws_s22	
+34627	祖灵之牙一式	冒险者	0	ws/bt_bld_bld/ws_s25	
+34628	祖灵之牙二式	冒险者	0	ws/bt_bld_bld/ws_s23	
+34629	祖灵之牙三式	冒险者	0	ws/bt_bld_bld/ws_s24	
+34630	祖灵之牙四式	冒险者	0	ws/bt_bld_bld/ws_s26	
+34631	祖灵大蛇牙	冒险者	0	ws/bt_bld_bld/ws_s27	
+34632	飞蛇之牙	蝰蛇剑士	41	ws/bt_bld_bld/ws_s28	
+34633	飞蛇之尾	蝰蛇剑士	41	ws/bt_bld_bld/ws_s21	
+34634	蛇尾击	冒险者	0	ability/bld_blademaster/abl005	
+34635	蛇尾闪	冒险者	0	ability/bld_blademaster/abl006	
+34636	双牙连击	冒险者	0	ability/bld_blademaster/abl001	
+34637	双牙乱击	冒险者	0	ability/bld_blademaster/abl002	
+34638	双牙连闪	冒险者	0	ability/bld_blademaster/abl003	
+34639	双牙乱闪	冒险者	0	ability/bld_blademaster/abl004	
+34640	祖灵之蛇一式	冒险者	0	ability/bld_blademaster/abl010	
+34641	祖灵之蛇二式	冒险者	0	ability/bld_blademaster/abl012	
+34642	祖灵之蛇三式	冒险者	0	ability/bld_blademaster/abl009	
+34643	祖灵之蛇四式	冒险者	0	ability/bld_blademaster/abl011	
+34644	飞蛇连尾击	冒险者	0	ability/bld_blademaster/abl007	
+34645	飞蛇乱尾击	冒险者	0	ability/bld_blademaster/abl008	
+34646	蛇行	蝰蛇剑士	41	ability/bld_blademaster/abl014	
+34647	蛇灵气	蝰蛇剑士	41	ability/bld_blademaster/abl013	
+34650	火炎之红	绘灵法师	42	magic/brs_pictomancer/mgc001	battle/magic_pt1_start
+34651	疾风之绿	冒险者	0	magic/brs_pictomancer/mgc002	battle/magic_pt4_start
+34652	流水之蓝	冒险者	0	magic/brs_pictomancer/mgc003	battle/magic_pt5_start
+34653	冰结之蓝青	绘灵法师	42	magic/brs_pictomancer/mgc004	battle/magic_pt2_start
+34654	飞石之纯黄	冒险者	0	magic/brs_pictomancer/mgc005	battle/magic_pt6_start
+34655	闪雷之品红	冒险者	0	magic/brs_pictomancer/mgc006	battle/magic_pt7_start
+34656	烈炎之红	绘灵法师	42	magic/brs_pictomancer/mgc009	battle/magic_pt1_start
+34657	烈风之绿	冒险者	0	magic/brs_pictomancer/mgc010	battle/magic_pt4_start
+34658	激水之蓝	冒险者	0	magic/brs_pictomancer/mgc023	battle/magic_pt5_start
+34659	冰冻之蓝青	绘灵法师	42	magic/brs_pictomancer/mgc011	battle/magic_pt2_start
+34660	坚石之纯黄	冒险者	0	magic/brs_pictomancer/mgc012	battle/magic_pt6_start
+34661	震雷之品红	冒险者	0	magic/brs_pictomancer/mgc024	battle/magic_pt7_start
+34662	神圣之白	绘灵法师	42	magic/brs_pictomancer/mgc013	battle/magic_pt1_start
+34663	彗星之黑	绘灵法师	42	magic/brs_pictomancer/mgc014	battle/magic_pt2_start
+34664	绒球彩绘	冒险者	0	magic/brs_pictomancer/mgc015	battle/magic_pt3_start
+34665	翅膀彩绘	冒险者	0	magic/brs_pictomancer/mgc016	battle/magic_pt8_start
+34666	兽爪彩绘	冒险者	0	magic/brs_pictomancer/mgc018	battle/magic_pt9_start
+34667	尖牙彩绘	冒险者	0	magic/brs_pictomancer/mgc017	battle/magic_pt10_start
+34668	重锤彩绘	冒险者	0	magic/brs_pictomancer/mgc019	battle/magic_pt11_start
+34669	星空彩绘	冒险者	0	magic/brs_pictomancer/mgc020	battle/magic_pt12_start
+34670	绒球构想	冒险者	0	ability/brs_pictomancer/abl001	
+34671	翅膀构想	冒险者	0	ability/brs_pictomancer/abl002	
+34672	兽爪构想	冒险者	0	ability/brs_pictomancer/abl004	
+34673	尖牙构想	冒险者	0	ability/brs_pictomancer/abl003	
+34674	重锤构想	冒险者	0	ability/brs_pictomancer/abl007	
+34675	星空构想	冒险者	0	ability/brs_pictomancer/abl008	
+34676	莫古力激流	绘灵法师	42	ability/brs_pictomancer/abl005	
+34677	马蒂恩惩罚	冒险者	0	ability/brs_pictomancer/abl006	
+34678	重锤敲章	绘灵法师	42	ws/bt_brs_plt/ws_s01	
+34679	重锤掠刷	冒险者	0	ws/bt_brs_plt/ws_s02	
+34680	重锤抛光	冒险者	0	ws/bt_brs_plt/ws_s03	
+34681	天星棱光	绘灵法师	42	magic/brs_pictomancer/mgc021	
+34682	天星棱光	冒险者	0	battle/0framehit	
+34683	减色混合	绘灵法师	42	ability/brs_pictomancer/abl009	
+34684	速涂	绘灵法师	42	ability/brs_pictomancer/abl013	
+34685	坦培拉涂层	绘灵法师	42	ability/brs_pictomancer/abl010	
+34686	油性坦培拉涂层	绘灵法师	42	ability/brs_pictomancer/abl011	
+34688	彩虹点滴	绘灵法师	42	magic/brs_pictomancer/mgc022	battle/magic_pt13_start
+34738	重生之炎	冒险者	0	mount_sp/m0846/mon_sp001	
+34866	吞世巨蛇	冒险者	0	limitbreak/lbk_viper_lv3	limitbreak/lbk_viper_start
+34867	赋彩幻想	冒险者	0	limitbreak/lbk_pictomancer_lv3	limitbreak/lbk_pictomancer_start
+34871	预备碰触	采矿工	16	gather/buff	
+34872	预备碰触	园艺工	17	gather/buff	
+36059	抚摸	冒险者	0	mount_sp/m0858/mon_sp001	
+36918	祈告剑	冒险者	0	ws/bt_swd_sld/ws_s16	
+36919	葬送剑	冒险者	0	ws/bt_swd_sld/ws_s17	
+36920	极致防御	骑士	19	ability/swd_knight/abl031	
+36921	绝对统治	骑士	19	ability/swd_knight/abl028	
+36922	荣耀之剑	冒险者	0	ability/swd_knight/abl029	
+36923	戮罪	战士	21	ability/2ax_warrior/abl030	
+36924	原初的怒震	冒险者	0	ability/2ax_warrior/abl028	
+36925	尽毁	冒险者	0	ability/2ax_warrior/abl029	
+36926	暗影步	暗黑骑士	32	ability/2sw_dark/abl039	
+36927	暗影卫	暗黑骑士	32	ability/2sw_dark/abl040	
+36928	血红乱	冒险者	0	ws/bt_2sw_emp/ws_s10	
+36929	报应	冒险者	0	ws/bt_2sw_emp/ws_s11	
+36930	戮山	冒险者	0	ws/bt_2sw_emp/ws_s12	
+36931	刺穿	冒险者	0	ws/bt_2sw_emp/ws_s13	
+36932	掠影的蔑视	暗黑骑士	32	ws/bt_2sw_emp/ws_s14	
+36934	弹道	绝枪战士	37	ability/2gb_bgb/abl024	
+36935	大星云	绝枪战士	37	ability/2gb_bgb/abl023	
+36936	命运之印	冒险者	0	ability/2gb_bgb/abl021	
+36937	崛起之心	绝枪战士	37	ws/bt_2gb_emp/ws_s15	
+36938	支配之心	冒险者	0	ws/bt_2gb_emp/ws_s16	
+36939	终结之心	冒险者	0	ws/bt_2gb_emp/ws_s17	
+36940	铁山斗气	格斗家	2	ability/clw_monk/abl017	
+36941	空鸣斗气	武僧	20	ability/clw_monk/abl017	
+36942	阴阳斗气	武僧	20	ability/clw_monk/abl017	
+36943	万象斗气	武僧	20	ability/clw_monk/abl017	
+36944	金刚周天	武僧	20	ability/clw_monk/abl032	
+36945	猿舞连击	武僧	20	ws/bt_clw_clw/ws_s20	
+36946	龙颚正拳	武僧	20	ws/bt_clw_clw/ws_s21	
+36947	豹袭崩拳	武僧	20	ws/bt_clw_clw/ws_s22	
+36948	真空波	冒险者	0	ws/bt_clw_clw/ws_s23	
+36949	绝空拳	武僧	20	ws/bt_clw_clw/ws_s24	
+36950	乾坤斗气弹	武僧	20	ws/bt_clw_clw/ws_s25	
+36951	龙翼滑翔	龙骑士	22	ability/2sp_dragoon/abl025	
+36952	云蒸龙变	冒险者	0	ws/bt_2sp_emp/ws_s18	
+36953	龙炎升	龙骑士	22	ability/2sp_dragoon/abl026	
+36954	前冲刺	龙骑士	22	ws/bt_2sp_emp/ws_s19	
+36955	螺旋击	龙骑士	22	ws/bt_2sp_emp/ws_s20	
+36956	渡星冲	龙骑士	22	ability/2sp_dragoon/abl027	
+36957	介毒之术	忍者	30	ability/dgr_ninja/abl034	
+36958	百雷铳	忍者	30	ability/dgr_ninja/abl035	
+36959	通灵之术·虾蟆仙	冒险者	0	ability/dgr_ninja/abl037	
+36960	是生灭法	冒险者	0	ability/dgr_ninja/abl036	
+36961	天理人道	冒险者	0	ability/dgr_ninja/abl038	
+36962	天眼通	武士	34	ability/2kt_samrai/abl024	
+36963	晓风	武士	34	ws/bt_2kt_emp/ws_s13	
+36964	残心	武士	34	ability/2kt_samrai/abl027	
+36965	天道五剑	冒险者	0	magic/2kt_samrai/mgc012	battle/magic_sam_start
+36966	天道雪月花	冒险者	0	magic/2kt_samrai/mgc011	battle/magic_sam_start
+36967	天道回返五剑	冒险者	0	magic/2kt_samrai/mgc012	
+36968	天道回返雪月花	冒险者	0	magic/2kt_samrai/mgc013	
+36969	祭牲	冒险者	0	ability/2km_reaper/abl016	
+36970	绞决处刑	冒险者	0	ws/bt_2km_emp/ws_s17	
+36971	缢杀处刑	冒险者	0	ws/bt_2km_emp/ws_s18	
+36972	断首处刑	冒险者	0	ws/bt_2km_emp/ws_s19	
+36973	完人	冒险者	0	ws/bt_2km_emp/ws_s20	
+36974	广域群射	弓箭手	5	ws/bt_2bw_emp/ws_s19	
+36975	碎心箭	吟游诗人	23	ability/2bw_bard/abl021	
+36976	共鸣箭	吟游诗人	23	ws/bt_2bw_emp/ws_s20	
+36977	光明神的返场余音	吟游诗人	23	ws/bt_2bw_emp/ws_s21	
+36978	烈焰弹	机工士	31	ws/bt_2gn_emp/ws_s21	
+36979	双将	机工士	31	ability/2gn_machin/abl030	
+36980	将死	机工士	31	ability/2gn_machin/abl031	
+36981	掘地飞轮	冒险者	0	ws/bt_2gn_emp/ws_s22	
+36982	全金属爆发	机工士	31	ws/bt_2gn_emp/ws_s23	
+36983	落幕舞	舞者	38	ws/bt_chk_chk/ws_s20	
+36984	结束动作	冒险者	0	ws/bt_chk_chk/ws_s21	
+36985	拂晓舞	冒险者	0	ws/bt_chk_chk/ws_s22	
+36986	高闪雷	黑魔法师	25	magic/thm_black/mgc014	battle/magic_blb_start
+36987	高震雷	黑魔法师	25	magic/thm_black/mgc015	battle/magic_blb_start
+36988	魔纹重置	黑魔法师	25	ability/thm_black/abl022	
+36989	耀星	黑魔法师	25	magic/thm_black/mgc016	battle/magic_blb_start
+36990	坏死爆发	召唤师	27	ability/swl_summon/abl055	
+36991	灼热之闪	召唤师	27	ability/swl_summon/abl056	
+36992	烈日龙神召唤	冒险者	0	ability/swl_summon/abl057	
+36994	灵极脉冲	冒险者	0	magic/swl_summon/mgc032	battle/magic_sum_start
+36995	灵极核爆	冒险者	0	magic/swl_summon/mgc038	battle/magic_sum_start
+36996	烈日核爆	冒险者	0	ability/swl_summon/abl060	
+36997	日光普照	召唤师	27	magic/swl_summon/mgc033	
+36998	烈日龙神迸发	冒险者	0	ability/swl_summon/abl058	
+37002	魔划圆斩·二段	冒险者	0	ws/bt_2rp_emp/ws_s11	
+37003	魔划圆斩·三段	冒险者	0	ws/bt_2rp_emp/ws_s12	
+37004	激荡	赤魔法师	35	magic/2rp_redmage/mgc027	battle/magic_rdm_start
+37005	荆棘环绕	赤魔法师	35	ability/2rp_redmage/abl016	
+37006	显贵冲击	冒险者	0	magic/2rp_redmage/mgc026	battle/magic_rdm_start
+37007	光芒四射	赤魔法师	35	ability/2rp_redmage/abl017	
+37008	以太变移	白魔法师	24	ability/cnj_white/abl023	
+37009	闪飒	白魔法师	24	magic/cnj_white/mgc010	battle/magic_wht_start
+37010	医养	白魔法师	24	magic/cnj_white/mgc011	battle/magic_wht_start
+37011	神爱抚	白魔法师	24	ability/cnj_white/abl024	
+37012	埋伏之毒	学者	28	ability/swl_summon/abl062	
+37013	意气轩昂之策	学者	28	magic/swl_summon/mgc052	battle/magic_sch_start
+37014	炽天附体	学者	28	magic/swl_summon/mgc035	
+37015	显灵之章	冒险者	0	magic/swl_summon/mgc036	battle/magic_sch_start
+37016	降临之章	冒险者	0	magic/swl_summon/mgc053	battle/magic_sch_start
+37017	星极抽卡	占星术士	33	ability/2gl_astro/abl021	
+37018	灵极抽卡	冒险者	0	ability/2gl_astro/abl021	
+37023	太阳神之衡	冒险者	0	ability/2gl_astro/play01	
+37024	放浪神之箭	冒险者	0	ability/2gl_astro/play03	
+37025	建筑神之塔	冒险者	0	ability/2gl_astro/play06	
+37026	战争神之枪	冒险者	0	ability/2gl_astro/play04	
+37027	世界树之干	冒险者	0	ability/2gl_astro/play02	
+37028	河流神之瓶	冒险者	0	ability/2gl_astro/play05	
+37029	神谕	占星术士	33	ability/2gl_astro/abl033	
+37030	阳星合相	占星术士	33	magic/2gl_astro/mgc031	battle/magic_ast_start
+37031	太阳星座	占星术士	33	ability/2gl_astro/abl034	
+37032	均衡失衡	冒险者	0	magic/2ff_sage/mgc022	battle/magic_2fa_start
+37033	心神风息	贤者	40	ability/2ff_sage/abl022	
+37034	均衡预后II	冒险者	0	magic/2ff_sage/mgc037	battle/magic_2fb_start
+37035	智慧之爱	贤者	40	ability/2ff_sage/abl023	
+37037	应急战术	冒险者	0	ability/swl_summon/abl025	
+37045	熟练妙招	捕鱼人	18	ability/no_mot_ability	
+37046	大鱼的知识	捕鱼人	18	ability/no_mot_ability	
+37047	歇竿	捕鱼人	18	ability/no_mot_ability	
+37120	狞豹的锐爪	冒险者	0	ws/bt_2ax_emp/wsh001	
+37121	狞豹的双牙	冒险者	0	ws/bt_2ax_emp/wsh004	
+37122	狞豹的尾鞭	冒险者	0	ws/bt_2ax_emp/wsh005	
+37123	犎牛的蹄击	冒险者	0	ability/2ax_warrior/abl019	
+37124	猛雕的血潮	冒险者	0	ability/2ax_warrior/abl005	
+37125	猛雕的锋喙	冒险者	0	ws/bt_2ax_emp/ws_s05	
+37126	图拉尔的峻烈	冒险者	0	human_sp/c0101/human_sp218	
+37127	图拉尔的严酷	冒险者	0	human_sp/c0101/human_sp219	
+37128	图拉尔的澎湃	冒险者	0	human_sp/c0101/human_sp220	
+37129	图拉尔的曙光	冒险者	0	human_sp/c0101/human_sp228	limitbreak/lbk_melee_start
+37173	与水共舞	冒险者	0	mount_sp/m0918/mon_sp001	
+37174	与水共舞	冒险者	0	mount_sp/m0918/mon_sp002	
+37443	图拉尔的峻烈	冒险者	0	human_sp/c0101/human_sp218	
+37444	图拉尔的严酷	冒险者	0	human_sp/c0101/human_sp219	
+37445	图拉尔的澎湃	冒险者	0	human_sp/c0101/human_sp220	
+37594	雄心之饵	捕鱼人	18	ability/no_mot_ability	
+37595	谦逊之饵	捕鱼人	18	ability/no_mot_ability	
+38838	图拉尔的峻烈	冒险者	0	human_sp/c0101/human_sp218	
+38839	图拉尔的严酷	冒险者	0	human_sp/c0101/human_sp219	
+38840	图拉尔的澎湃	冒险者	0	human_sp/c0101/human_sp220	
+39157	咬噬尖齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s31	
+39158	切割尖齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s32	
+39159	猛袭利齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s33	
+39160	疾速利齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s34	
+39161	咬击獠齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s35	
+39163	啮噬獠齿	蝰蛇剑士	41	ws/bt_bld_bld/ws_s36	
+39166	血宴灵蛇	蝰蛇剑士	41	ws/bt_bld_bld/ws_s16	
+39167	血宴盘蛇	蝰蛇剑士	41	ws/bt_bld_bld/ws_s37	
+39168	飞蛇之尾	蝰蛇剑士	41	ws/bt_bld_bld/ws_s29	
+39169	祖灵之牙一式	蝰蛇剑士	41	ws/bt_bld_bld/ws_s25	
+39170	祖灵之牙二式	蝰蛇剑士	41	ws/bt_bld_bld/ws_s23	
+39171	祖灵之牙三式	蝰蛇剑士	41	ws/bt_bld_bld/ws_s24	
+39172	祖灵之牙四式	蝰蛇剑士	41	ws/bt_bld_bld/ws_s26	
+39173	祖灵大蛇牙	蝰蛇剑士	41	ws/bt_bld_bld/ws_s30	
+39174	蛇尾击	蝰蛇剑士	41	ability/bld_blademaster/abl017	
+39175	双牙连击	蝰蛇剑士	41	ability/bld_blademaster/abl001	
+39176	双牙乱击	蝰蛇剑士	41	ability/bld_blademaster/abl018	
+39177	飞蛇连尾击	蝰蛇剑士	41	ability/bld_blademaster/abl015	
+39178	飞蛇乱尾击	蝰蛇剑士	41	ability/bld_blademaster/abl016	
+39179	祖灵之蛇一式	蝰蛇剑士	41	ability/bld_blademaster/abl010	
+39180	祖灵之蛇二式	蝰蛇剑士	41	ability/bld_blademaster/abl012	
+39181	祖灵之蛇三式	蝰蛇剑士	41	ability/bld_blademaster/abl009	
+39182	祖灵之蛇四式	蝰蛇剑士	41	ability/bld_blademaster/abl011	
+39184	蛇行	蝰蛇剑士	41	ability/bld_blademaster/abl014	
+39185	蛇鳞术	蝰蛇剑士	41	ability/pvp_common/abl041_start	
+39186	蛇鳞击	蝰蛇剑士	41	ability/no_mot_ability	
+39187	蛇鳞击	蝰蛇剑士	41	ability/pvp_common/abl043	
+39188	血气蛇鳞击	蝰蛇剑士	41	ability/pvp_common/abl044	
+39189	飞蛇之魂	蝰蛇剑士	41	ability/bld_blademaster/abl013	
+39190	吞天巨蛇	蝰蛇剑士	41	ability/pvp_common/abl045	
+39191	火炎之红	绘灵法师	42	magic/brs_pictomancer/mgc001	battle/magic_pt1_start
+39192	疾风之绿	绘灵法师	42	magic/brs_pictomancer/mgc002	battle/magic_pt4_start
+39193	流水之蓝	绘灵法师	42	magic/brs_pictomancer/mgc003	battle/magic_pt5_start
+39194	冰结之蓝青	绘灵法师	42	magic/brs_pictomancer/mgc004	battle/magic_pt2_start
+39195	飞石之纯黄	绘灵法师	42	magic/brs_pictomancer/mgc005	battle/magic_pt6_start
+39196	闪雷之品红	绘灵法师	42	magic/brs_pictomancer/mgc006	battle/magic_pt7_start
+39198	神圣之白	绘灵法师	42	magic/brs_pictomancer/mgc025	
+39199	彗星之黑	绘灵法师	42	magic/brs_pictomancer/mgc026	
+39200	绒球彩绘	绘灵法师	42	magic/brs_pictomancer/mgc015	battle/magic_pt3_start
+39201	翅膀彩绘	绘灵法师	42	magic/brs_pictomancer/mgc016	battle/magic_pt8_start
+39202	兽爪彩绘	绘灵法师	42	magic/brs_pictomancer/mgc018	battle/magic_pt9_start
+39203	尖牙彩绘	绘灵法师	42	magic/brs_pictomancer/mgc017	battle/magic_pt10_start
+39205	绒球构想	绘灵法师	42	ability/brs_pictomancer/abl001	
+39206	翅膀构想	绘灵法师	42	ability/brs_pictomancer/abl017	
+39207	兽爪构想	绘灵法师	42	ability/brs_pictomancer/abl016	
+39208	尖牙构想	绘灵法师	42	ability/brs_pictomancer/abl018	
+39210	速涂	绘灵法师	42	ability/brs_pictomancer/abl013	
+39211	坦培拉涂层	绘灵法师	42	ability/brs_pictomancer/abl010	
+39212	油性坦培拉涂层	绘灵法师	42	ability/brs_pictomancer/abl011	
+39213	减色混合	绘灵法师	42	ability/brs_pictomancer/abl009	
+39214	解除减色混合	绘灵法师	42	ability/no_mot_ability	
+39215	胖胖之墙	绘灵法师	42	ability/pvp_common/abl046	
+39216	天星棱光	绘灵法师	42	magic/brs_pictomancer/mgc027	
+39217	天星棱光	绘灵法师	42	battle/0framehit	
+39505	幻煌光	冒险者	0	mount_sp/m0765/mon_sp001	
+39506	幻煌光	冒险者	0	mount_sp/m0765/mon_sp001	
+39782	莫古力激流	绘灵法师	42	ability/brs_pictomancer/abl014	
+39783	马蒂恩惩罚	绘灵法师	42	ability/brs_pictomancer/abl015	
+40109	哭泣表情	冒险者	0	mount_sp/m0891/mon_sp001	
+40110	生气表情	冒险者	0	mount_sp/m0891/mon_sp002	
+40111	混乱表情	冒险者	0	mount_sp/m0891/mon_sp003	
+40112	悠闲表情	冒险者	0	mount_sp/m0891/mon_sp004	
+40113	亮刀	冒险者	0	mount_sp/m0885/mon_sp001	
+41343	亚返回	冒险者	0	normal/dejon	normal/magic_cmn_start
+41428	祈告剑	骑士	19	ws/bt_swd_sld/ws_s21	
+41429	葬送剑	骑士	19	ws/bt_swd_sld/ws_s22	
+41430	强盾猛击	骑士	19	ws/bt_swd_sld/ws_s18	
+41431	绝对统治	骑士	19	ability/swd_knight/abl033	
+41432	尽毁	战士	21	ability/2ax_warrior/abl034	
+41433	原初的怒震	战士	21	ability/2ax_warrior/abl031	
+41434	血红乱	暗黑骑士	32	ws/bt_2sw_emp/ws_s20	
+41435	报应	暗黑骑士	32	ws/bt_2sw_emp/ws_s21	
+41436	戮山	暗黑骑士	32	ws/bt_2sw_emp/ws_s22	
+41437	掠影的蔑视	暗黑骑士	32	ability/2sw_dark/abl041	
+41438	刺穿	暗黑骑士	32	ws/bt_2sw_emp/ws_s16	
+41442	命运之印	绝枪战士	37	ability/2gb_bgb/abl025	
+41443	刚玉之心	绝枪战士	37	ability/2gb_bgb/abl019	
+41444	猿舞连击	武僧	20	ws/bt_clw_clw/ws_s30	
+41445	龙颚正拳	武僧	20	ws/bt_clw_clw/ws_s34	
+41446	豹袭崩拳	武僧	20	ws/bt_clw_clw/ws_s35	
+41448	乾坤斗气弹	武僧	20	ws/bt_clw_clw/ws_s25	
+41449	云蒸龙变	龙骑士	22	ws/bt_2sp_emp/ws_s25	
+41450	渡星冲	龙骑士	22	ability/2sp_dragoon/abl032	
+41451	介毒之术	忍者	30	ability/dgr_ninja/abl039	
+41452	是生灭法	忍者	30	ability/dgr_ninja/abl042	
+41454	天道雪月花	武士	34	magic/2kt_samrai/mgc016	battle/magic_sam_start
+41455	天道回返雪月花	武士	34	magic/2kt_samrai/mgc017	
+41456	断首处刑	钐镰客	39	ws/bt_2km_emp/ws_s22	
+41457	命运既定	钐镰客	39	ability/2km_reaper/abl017	
+41458	完人	钐镰客	39	ws/bt_2km_emp/ws_s20	
+41464	和弦箭	吟游诗人	23	ws/bt_2bw_emp/ws_s22	
+41465	和弦箭	吟游诗人	23	ws/bt_2bw_emp/ws_s22	
+41466	和弦箭	吟游诗人	23	ws/bt_2bw_emp/ws_s22	
+41467	英雄的返场余音	吟游诗人	23	ws/bt_2bw_emp/ws_s26	
+41468	烈焰弹	机工士	31	ws/bt_2gn_emp/ws_s21	
+41469	全金属爆发	机工士	31	ws/bt_2gn_emp/ws_s23	
+41470	起爆	机工士	31	ability/2gn_machin/abl024	
+41472	拂晓舞	舞者	38	ws/bt_chk_chk/ws_s25	
+41473	高烈炎	黑魔法师	25	magic/thm_black/mgc028	battle/magic_blk_start
+41474	高冰冻	黑魔法师	25	magic/thm_black/mgc029	battle/magic_blk_start
+41476	烈火环	黑魔法师	25	ability/thm_black/abl023	
+41477	烈火环	黑魔法师	25	ability/thm_black/abl025	
+41478	寒冰环	黑魔法师	25	ability/thm_black/abl024	
+41480	耀星	黑魔法师	25	magic/thm_black/mgc016	battle/magic_blb_start
+41481	霜星	黑魔法师	25	magic/thm_black/mgc017	battle/magic_blb_start
+41482	毁绝	召唤师	27	magic/swl_summon/mgc044	battle/magic_sum_start
+41483	坏死爆发	召唤师	27	ability/swl_summon/abl066	
+41484	死星核爆	召唤师	27	ability/swl_summon/abl067	
+41485	炼狱之炎	召唤师	27	ability/swl_summon/abl068	
+41486	激荡	赤魔法师	35	magic/2rp_redmage/mgc027	battle/magic_rdm_start
+41487	显贵冲击	赤魔法师	35	magic/2rp_redmage/mgc030	battle/magic_rdm_start
+41488	魔回刺	赤魔法师	35	ws/bt_2rp_emp/ws_s13	
+41489	魔交击斩	赤魔法师	35	ws/bt_2rp_emp/ws_s14	
+41490	魔连攻	赤魔法师	35	ws/bt_2rp_emp/ws_s15	
+41491	焦热	赤魔法师	35	magic/2rp_redmage/mgc029	battle/magic_rdm_start
+41492	决断	赤魔法师	35	magic/2rp_redmage/mgc028	battle/magic_rdm_start
+41493	荆棘环绕	赤魔法师	35	ability/2rp_redmage/abl020	
+41494	鼓励	赤魔法师	35	ability/2rp_redmage/abl023	
+41495	光芒四射	赤魔法师	35	ability/2rp_redmage/abl024	battle/magic_rdm_start
+41496	剑身强部	赤魔法师	35	ability/2rp_redmage/abl019	
+41498	南天十字	赤魔法师	35	ability/pvp_common/abl034	
+41499	闪飒	白魔法师	24	magic/cnj_white/mgc014	battle/magic_wht_start
+41500	炽天的光环	学者	28	magic/swl_summon/mgc039	
+41501	降临之章	学者	28	magic/swl_summon/mgc041	battle/magic_sch_start
+41502	炽天附体	学者	28	ability/pvp_common/abl048	
+41503	小奥秘卡	占星术士	33	ability/2gl_astro/abl020	
+41504	王冠之贵妇	占星术士	33	ability/2gl_astro/play15	
+41505	王冠之领主	占星术士	33	ability/2gl_astro/play16	
+41506	本轮	占星术士	33	ability/2gl_astro/abl035	
+41507	逆行	占星术士	33	ability/2gl_astro/abl036	
+41508	神谕	占星术士	33	ability/2gl_astro/abl037	
+41509	绝空拳	武僧	20	ws/bt_clw_clw/ws_s28	
+41510	昏沉	黑魔法师	25	ability/thm_black/abl026	
+41511	命运之环	绝枪战士	37	ws/bt_2gb_emp/ws_s18	
+41577	残心	武士	34	ability/2kt_samrai/abl028	
+41658	心神风息	贤者	40	ability/2ff_sage/abl024	
+41964	和弦箭	吟游诗人	23	ws/bt_2bw_emp/ws_s22	
+42019	地板消失	冒险者	0	mount_sp/m0924/mon_sp001	mount_sp/m0924/mon_sp001_start
+42036	胡萝卜枪	冒险者	0	mount_sp/m0907/mon_sp006	
+42037	高能胡萝卜炮	冒险者	0	mount_sp/m0907/mon_sp001	mount_sp/m0907/mon_sp001_start
+42038	大转圈割草	冒险者	0	pc_contentsaction/pc_cnt068	
+42039	突进割草	冒险者	0	pc_contentsaction/pc_cnt067	
+42057	威猛酒桶刺	冒险者	0	mount_sp/m0916/mon_sp001	
+42061	等离子扩散器	冒险者	0	mount_sp/m0998/mon_sp001	
+42062	宇宙爆破器	冒险者	0	mount_sp/m0998/mon_sp002	mount_sp/m0998/mon_sp002_start
+42063	改良型强力吸取器	冒险者	0	mount_sp/m0907/mon_sp009	
+42064	高能拖拽激光	冒险者	0	mount_sp/m0907/mon_sp008	mount_sp/m0907/mon_sp008_start
+42065	宇宙夯地机	冒险者	0	pc_contentsaction/wks028	
+42066	改良型宇宙吸取器	冒险者	0	pc_contentsaction/wks029	
+42071	铲斗冲	冒险者	0	mount_sp/m0930/mon_sp001	
+42149	宇宙返回	冒险者	0	normal/dejon	normal/magic_cmn_start
+42150	宇宙钻头	冒险者	0	pc_contentsaction/wks004	
+42151	开心信号弹	冒险者	0	mount_sp/m0907/mon_sp005	
+42152	提示灯	冒险者	0	mount_sp/m0930/mon_sp003	
+42194	悔罪	骑士	19	ability/swd_knight/abl032	
+42250	魔导爪	冒险者	0	mount_sp/m0507/mon_sp001	
+42251	魔导冲刺	冒险者	0	mount_sp/m0507/mon_sp002	
+42252	宇宙火焰喷射器	冒险者	0	pc_contentsaction/wks007	
+42254	成长剂喷洒器	冒险者	0	mount_sp/m0998/mon_sp003	
+42255	成长剂扩散射线	冒险者	0	mount_sp/m0998/mon_sp004	
+42256	宇宙成长剂2型	冒险者	0	pc_contentsaction/wks035	
+42257	宇宙成长剂	冒险者	0	pc_contentsaction/wks032	
+42258	宇宙火焰喷射器	冒险者	0	pc_contentsaction/wks007	
+42261	气动粉碎机	冒险者	0	mount_sp/m0930/mon_sp002	
+43336	不死鸟之尾	冒险者	0	normal/item_end	normal/item_start
+43357	宇宙冲刺	冒险者	0	ability/no_mot_sprint	
+43365	开启自动选取目标	冒险者	0	ability/no_mot_ability	
+43366	关闭自动选取目标	冒险者	0	ability/no_mot_ability	
+44039	停止信号	冒险者	0	pc_contentsaction/pc_cnt063	
+44492	解除变身	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44501	声援小红	冒险者	0	pc_contentsaction/pc_cnt071	
+44502	声援小黄	冒险者	0	pc_contentsaction/pc_cnt072	
+44503	声援小蓝	冒险者	0	pc_contentsaction/pc_cnt073	
+44504	声援小紫	冒险者	0	pc_contentsaction/pc_cnt074	
+44516	雪花	冒险者	0	mount_sp/m0958/mon_sp001	
+44517	先捣蛋再给糖	冒险者	0	mount_sp/m0721/mon_sp001	
+44518	先捣蛋再捣蛋	冒险者	0	mount_sp/m0721/mon_sp002	
+44519	先捣蛋再给糖	冒险者	0	mount_sp/m0721/mon_sp001	
+44520	先捣蛋再捣蛋	冒险者	0	mount_sp/m0721/mon_sp002	
+44616	魔陶器：加速	冒险者	0	pc_contentsaction/pc_cnt059	
+44617	魔陶器：净化护符	冒险者	0	pc_contentsaction/pc_cnt060	
+44618	魔陶器：朝圣的指引	冒险者	0	pc_contentsaction/pc_cnt061	
+44619	杜松香	冒险者	0	pc_contentsaction/pc_cnt062	
+44628	骨碌骨碌	冒险者	0	mon_sp/[SKL_ID]/mon_sp001	battle/mon_sp_a_start
+44629	大爆炸	冒险者	0	mon_sp/[SKL_ID]/mon_sp016	battle/mon_sp_b_start
+44875	举起火炬	冒险者	0	ornament_sp/m6011/onm_sp01	
+44879	碎击斩	驯兽师	43	ws/bt_axe_sld/ws_s01	
+44880	捕获	驯兽师	43	ability/bst_beastmaster/abl001	
+44881	一号兽笛	驯兽师	43	magic/bst_beastmaster/mgc001	battle/magic_bst_start
+44882	识破	驯兽师	43	ability/bst_beastmaster/abl002	
+44883	碎咬斧	驯兽师	43	ws/bt_axe_sld/ws_s02	
+44884	山崩斧	驯兽师	43	ws/bt_axe_sld/ws_s04	
+44885	裂盾劈	驯兽师	43	ws/bt_axe_sld/ws_s03	
+44887	寒风斧	驯兽师	43	ws/bt_axe_sld/ws_s05	
+44888	回旋斧	驯兽师	43	ws/bt_axe_sld/ws_s06	
+44889	风啸斧	驯兽师	43	ws/bt_axe_sld/ws_s07	
+44890	释放	驯兽师	43	ability/bst_beastmaster/abl004	
+44891	最后一击	驯兽师	43	ability/bst_beastmaster/abl005	
+44892	二号兽笛	驯兽师	43	magic/bst_beastmaster/mgc001	battle/magic_bst_start
+44893	盾牌冲击	驯兽师	43	ability/bst_beastmaster/abl006	
+44894	三号兽笛	驯兽师	43	magic/bst_beastmaster/mgc001	battle/magic_bst_start
+44895	借用	驯兽师	43	ability/bst_beastmaster/abl021	
+44896	百兽肤	冒险者	0	ability/bst_beastmaster/abl008	
+44897	百虫肤	冒险者	0	ability/bst_beastmaster/abl007	
+44898	有翼飞掠	冒险者	0	ability/bst_beastmaster/abl009	
+44899	草木播种	冒险者	0	ability/bst_beastmaster/abl013	
+44900	水栖波	冒险者	0	ability/bst_beastmaster/abl014	eureka/magic_erk_start
+44901	甲鳞肤	冒险者	0	ability/bst_beastmaster/abl015	
+44902	咒具碎魂	冒险者	0	ability/bst_beastmaster/abl016	
+44903	死尸净化	冒险者	0	ability/bst_beastmaster/abl017	
+44904	声援	驯兽师	43	ability/bst_beastmaster/abl018	
+44905	鼓劲	驯兽师	43	ability/bst_beastmaster/abl019	
+44910	兽心协作技一式·翔	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44911	兽心协作技一式·猛	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44912	兽心协作技一式·坚	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44913	兽心协作技一式·魔	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44914	兽心协作技二式·生息	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44915	兽心协作技二式·死灭	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44916	兽心协作技三式·万象流转	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip_nomi_saisoku	
+44920	强力吸取器	冒险者	0	mount_sp/m0907/mon_sp002	
+44921	拖曳光束	冒险者	0	mount_sp/m0907/mon_sp004	
+44922	拖曳光束	冒险者	0	mount_sp/m0907/mon_sp007	
+44923	改良版铲斗冲	冒险者	0	mount_sp/m0930/mon_sp001	
+44924	等离子铲斗冲	冒险者	0	mount_sp/m0930/mon_sp005	
+44925	宇宙钻头	冒险者	0	pc_contentsaction/wks005	
+44926	宇宙吸取器	冒险者	0	pc_contentsaction/wks003	
+44930	狂猛怒火	冒险者	0	ws/bt_axe_sld/ws_s08	
+44931	利鹰坚爪	冒险者	0	ws/bt_axe_sld/ws_s09	
+44932	升魔暴落	冒险者	0	ws/bt_axe_sld/ws_s10	
+44933	灾祸天翔	冒险者	0	ws/bt_axe_sld/ws_s11	
+45038	有翼飞掠	冒险者	0	ability/bst_beastmaster/abl009	
+45039	有翼飞掠	冒险者	0	ability/bst_beastmaster/abl010	
+45040	有翼飞掠	冒险者	0	ability/bst_beastmaster/abl011	
+45041	有翼飞掠	冒险者	0	ability/bst_beastmaster/abl012	
+45127	转圈割草	冒险者	0	pc_contentsaction/pc_cnt066	
+45193	伸懒腰	冒险者	0	mount_sp/m0948/mon_sp001	
+45194	舔爪	冒险者	0	mount_sp/m0948/mon_sp002	
+45195	哈气	冒险者	0	mount_sp/m0948/mon_sp003	
+45960	魔回刺	冒险者	0	ws/bt_2rp_emp/ws_s16	
+45961	魔交击斩	冒险者	0	ws/bt_2rp_emp/ws_s17	
+45962	魔连攻	冒险者	0	ws/bt_2rp_emp/ws_s18	
+46406	强硬射击	冒险者	0	human_sp/c0101/human_sp257	battle/mon_sp_a_start
+46407	更强硬射击	冒险者	0	human_sp/c0101/human_sp246	battle/mon_sp_a_start
+46408	超强硬射击	冒险者	0	human_sp/c0101/human_sp247	battle/mon_sp_a_start
+46409	强硬电火花	冒险者	0	human_sp/c0101/human_sp248	battle/mon_sp_a_start
+46410	硬派身法	冒险者	0	human_sp/c0101/human_sp249	battle/mon_sp_a_start
+46411	暗夜烈马	冒险者	0	human_sp/c0101/human_sp250	battle/mon_sp_a_start
+46412	硬派之源	冒险者	0	human_sp/c0101/human_sp251	battle/mon_sp_a_start
+46413	硬派的告别	冒险者	0	mon_sp/gimmick/monster_hanyou_hitclip2actionmove	battle/mon_sp_a_start
+46756	火炎之红	冒险者	0	magic/brs_pictomancer/mgc001	battle/magic_pt1_start
+46757	疾风之绿	冒险者	0	magic/brs_pictomancer/mgc002	battle/magic_pt4_start
+46758	流水之蓝	冒险者	0	magic/brs_pictomancer/mgc003	battle/magic_pt5_start
+46759	烈炎之红	冒险者	0	magic/brs_pictomancer/mgc009	battle/magic_pt1_start
+46760	烈风之绿	冒险者	0	magic/brs_pictomancer/mgc010	battle/magic_pt4_start
+46761	激水之蓝	冒险者	0	magic/brs_pictomancer/mgc023	battle/magic_pt5_start
+46762	生命水	冒险者	0	normal/item_end	normal/item_start
+46763	蝴蝶彩绘	冒险者	0	human_sp/c1101/human_sp012	
+46959	1级魔兽恢复药	冒险者	0	normal/item_end	
+46960	2级魔兽恢复药	冒险者	0	normal/item_end	
+46961	3级魔兽恢复药	冒险者	0	normal/item_end	
+46962	4级魔兽恢复药	冒险者	0	normal/item_end	
+46963	1级魔兽药粉	冒险者	0	normal/item_end	
+46964	2级魔兽药粉	冒险者	0	normal/item_end	
+46965	3级魔兽药粉	冒险者	0	normal/item_end	
+46966	魔兽解毒药	冒险者	0	normal/item_end	
+46967	魔兽金针	冒险者	0	normal/item_end	
+46968	魔兽眼药	冒险者	0	normal/item_end	
+46969	1级魔兽抗毒药	冒险者	0	normal/item_end	
+46970	2级魔兽抗毒药	冒险者	0	normal/item_end	
+46971	1级魔兽抗麻痹药	冒险者	0	normal/item_end	
+46972	2级魔兽抗麻痹药	冒险者	0	normal/item_end	
+46973	1级魔兽抗失明药	冒险者	0	normal/item_end	
+46974	2级魔兽抗失明药	冒险者	0	normal/item_end	
+46975	1级魔兽抗石化药	冒险者	0	normal/item_end	
+46976	2级魔兽抗石化药	冒险者	0	normal/item_end	
+46977	1级魔兽抗睡眠药	冒险者	0	normal/item_end	
+46978	2级魔兽抗睡眠药	冒险者	0	normal/item_end	
+46979	回唤兽笛	冒险者	0	normal/item_end	
+46980	魔兽烟雾弹	冒险者	0	normal/item_end	
+46981	1级魔兽复活药	冒险者	0	normal/item_end	
+46982	2级魔兽复活药	冒险者	0	normal/item_end	
+46983	盗贼之眼	冒险者	0	normal/item_end	
+46984	商人之眼	冒险者	0	normal/item_end	
+46985	魔兽硬肤药	冒险者	0	normal/item_end	
+46986	魔兽缩时药	冒险者	0	normal/item_end	
+46987	魔兽刚力药	冒险者	0	normal/item_end	
+46988	魔兽魔力药	冒险者	0	normal/item_end	
+46989	魔兽特攻药	冒险者	0	normal/item_end	
+46990	魔兽敏捷药	冒险者	0	normal/item_end	
+46991	魔兽耐力药	冒险者	0	normal/item_end	
+46992	魔兽加速药	冒险者	0	normal/item_end	
+46993	魔兽羽毛	冒险者	0	eureka/myc002	
+46994	1级魔兽耐火药	冒险者	0	normal/item_end	
+46995	2级魔兽耐火药	冒险者	0	normal/item_end	
+46996	1级魔兽耐水药	冒险者	0	normal/item_end	
+46997	2级魔兽耐水药	冒险者	0	normal/item_end	
+46998	1级魔兽耐土药	冒险者	0	normal/item_end	
+46999	2级魔兽耐土药	冒险者	0	normal/item_end	
+47000	1级魔兽耐雷药	冒险者	0	normal/item_end	
+47001	2级魔兽耐雷药	冒险者	0	normal/item_end	
+47002	1级魔兽耐风药	冒险者	0	normal/item_end	
+47003	2级魔兽耐风药	冒险者	0	normal/item_end	
+47004	1级魔兽耐冰药	冒险者	0	normal/item_end	
+47005	2级魔兽耐冰药	冒险者	0	normal/item_end	
+47006	火之牙	冒险者	0	ability/bst_beastmaster/abl022	
+47007	冰之牙	冒险者	0	ability/bst_beastmaster/abl023	
+47008	水之牙	冒险者	0	ability/bst_beastmaster/abl024	
+47009	雷之牙	冒险者	0	ability/bst_beastmaster/abl025	
+47010	土之牙	冒险者	0	ability/bst_beastmaster/abl026	
+47011	风之牙	冒险者	0	ability/bst_beastmaster/abl027	
+47012	吸血鬼之牙	冒险者	0	ability/bst_beastmaster/abl028	
+47013	魔兽吸血药	冒险者	0	normal/item_end	
+47014	反射之书	冒险者	0	normal/item_end	
+47015	闪躲之书	冒险者	0	normal/item_end	
+47016	时之沙	冒险者	0	normal/item_end	
+47017	星体风暴	冒险者	0	ability/bst_beastmaster/abl029	
+47018	魔兽恢复药套装	冒险者	0	normal/item_end	
+47019	魔兽治愈套装	冒险者	0	normal/item_end	
+47092	释放	冒险者	0	ability/bst_beastmaster/abl004	
+47093	大招	驯兽师	43	ability/bst_beastmaster/abl003	
+47238	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47239	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47240	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47241	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47242	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47243	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47244	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47245	借用	冒险者	0	ability/bst_beastmaster/abl021	
+47246	跳一跳	冒险者	0	mount_sp/m0977/mon_sp001	
+48376	魔兽刚力猛药	冒险者	0	normal/item_end	
+48377	魔兽魔力猛药	冒险者	0	normal/item_end	
+48378	魔兽特攻猛药	冒险者	0	normal/item_end	
+48379	魔兽敏捷猛药	冒险者	0	normal/item_end	
+48380	魔兽耐力猛药	冒险者	0	normal/item_end	
+48381	铸魔之书	冒险者	0	eureka/myc001	
+48382	钢刺之书	冒险者	0	eureka/myc002	
+48515	星芒铃铛	冒险者	0	mount_sp/m0996/mon_sp001	
+48516	星芒铃铛	冒险者	0	mount_sp/m0996/mon_sp001	
+49904	成长剂喷洒器	冒险者	0	mount_sp/m0907/mon_sp010	
+50083	加特林机枪射击	冒险者	0	ornament_sp/m6016/onm_sp01	
+50731	翻地	冒险者	0	ornament_sp/m6017/onm_sp02	
+50732	挖掘	冒险者	0	ornament_sp/m6017/onm_sp01	
+51026	举起灯笼	冒险者	0	ornament_sp/m6018/onm_sp01	

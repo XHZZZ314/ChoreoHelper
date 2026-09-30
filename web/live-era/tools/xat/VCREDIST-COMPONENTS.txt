@@ -1,0 +1,31 @@
+VC++ 2012 x86 运行库随包登记（TASK-20260917-PLUGIN-XAT-INVOCATION，案 B，2026-09-17）
+=====================================================================
+
+属主拍板（合同正式 r1，拍板②=案 B）：XATHavokInterop.exe（VC++ 2012 x86，32 位）所需的
+MSVCP110.dll / MSVCR110.dll 以 app-local 方式随本目录携带（与 exe 同目录即被 Windows
+加载器命中），自用安装零前置。本文件为新增登记文件；目录内原有 5 个文件（XATHavokInterop.exe、
+LICENSE-XAT.txt、COMPONENTS.txt、README.txt、distribution-authorization.json）的本次交付
+一字节未改（前任务 TASK-20260917-SIMPLE-CHOREO-XAT-BUNDLE 已验收冻结）。
+
+成分清单（本目录新增文件，共 2 个）：
+- msvcp110.dll  535,008 字节  SHA-256 c8d5572ca8d7624871188f0acabc3ae60d4c5a4f6782d952b9038de3bc28b39a
+- msvcr110.dll  875,472 字节  SHA-256 b30160e759115e24425b9bcdf606ef6ebce4657487525ede7f1ac40b90ff7e49
+  （均为 x86 / PE machine 0x014c；来源=本机固定工具链树既有 app-local 副本复制，
+   未联网下载任何字节；来源树见前任务实施发现 #1 登记。）
+
+授权与分发边界：
+- 这两个 DLL 是微软 Visual C++ 2012 Redistributable (x86) 的组成部分。随包复制属
+  "引入第三方二进制"：自用优先不阻塞；对外分发前须按微软可再分发条款（REDIST list）
+  完成独立审查并在本文件追加授权证据指针——这是独立于 Etheirys/XAT #19 / Havok 链的
+  新审查项（TASK-20260917-PLUGIN-XAT-INVOCATION 合同"本次做"第 5 条登记）。
+- 分发授权开关（distribution-authorization.json，status=unauthorized）语义不变：
+  未授权期间公开包继续拒绝整个 tools/ 子目录与钉死字节（含上述 DLL 哈希，
+  见 scripts/release-gates.js XAT_PINNED_DLL_SHA256 与 make-release-staging.js 双保险）；
+  翻转为 authorized 时，打包脚本会核验两 DLL 在场且哈希=上述登记值（硬条件）。
+  开关 JSON 本身一字节未改；本文件即运行库组件的授权证据指针落点（翻转条件原文
+  见 distribution-authorization.json flipConditions，XAT 部分沿用）。
+
+运行期行为（产品侧，src/XatClipConverter.cs）：
+- 转换前不做系统目录扫描、不改 PATH、不回退搜索；随包 DLL 被删/损坏时，子进程启动
+  失败或退出码 0xC0000135/0xC0000139 会走显式"VC++ 2012 x86 运行库缺失或损坏"分支，
+  指引修复/重装插件包，绝不静默失败。

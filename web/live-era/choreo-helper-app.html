@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FF14 编舞时间轴 v6.1(歌词双语)</title>
+<link rel="stylesheet" href="choreo-helper-app.css">
+</head>
+<body>
+<div class="immediate-stop-bar"><button type="button" id="immediateStop" class="btn danger">■ 立即停止</button><span id="immediateStopStatus" role="status" aria-live="polite">停止当前播放和本机自动操作</span><button type="button" class="btn" onclick="ChoreoStageGameUI.open(Math.max(0,store.selectedDancer||0))">游戏连接 / 结果</button></div>
+<div id="editorFrame" class="editor-frame">
+  <div id="root" class="app"></div>
+  <aside id="previewDock" class="preview-dock" aria-label="3D 预览工作区"></aside>
+  <section id="musicDock" class="music-dock" aria-label="音乐与节拍"></section>
+</div>
+<div class="loading" id="loading"><div class="spin"></div><div class="load-tx" id="loadTx">正在连接 ChoreoHelper API...</div></div>
+<div class="toast" id="toast"></div>
+<div class="ctx" id="ctxMenu"></div>
+<div class="tip" id="tooltip"></div>
+<!-- 加载顺序约束由 web/test-shell.js 断言；详细理由见各模块头注与 docs/ -->
+<!-- ARCH-2：choreo-api.js 是唯一 HTTP 出口，须先于所有消费方 -->
+<script src="choreo-api.js"></script>
+<script src="choreo-engine.js"></script>
+<script src="choreo-library.js"></script>
+<script src="choreo-catalog.js"></script>
+<script src="choreo-projects.js"></script>
+<!-- WP-5：文档纯模块先于持久化接线层，二者先于控制器 -->
+<script src="choreo-document.js"></script>
+<script src="choreo-docwire.js"></script>
+<!-- EXEC-CORE：ShowCompiler 纯编译模块，先于控制器 -->
+<script src="choreo-x1-inputs.js"></script>
+<script src="choreo-show-compiler.js"></script>
+<script src="choreo-ensemble-package.js"></script>
+<script src="choreo-ensemble-session.js"></script>
+<script src="choreo-ensemble-transport.js"></script>
+<script src="choreo-ensemble-clock.js"></script>
+<script src="choreo-ensemble-audio.js"></script>
+<script src="choreo-ensemble-ui.js"></script>
+<!-- MUSIC：timing→music 纯逻辑层先于控制器，UI 面板后置 -->
+<script src="choreo-music-timing.js"></script>
+<script src="choreo-music.js"></script>
+<script src="choreo-edit.js"></script>
+<script src="choreo-clip-time.js"></script>
+<script src="choreo-group-move.js"></script>
+<script src="choreo-check.js"></script>
+<script src="choreo-meddle-material.js"></script>
+<script src="choreo-model-import.js"></script>
+<script src="choreo-stage-motion.js"></script>
+<script src="choreo-stage-motion-ui.js"></script>
+<script src="choreo-stage-game-plan.js"></script>
+<script src="choreo-stage-show.js"></script>
+<script src="choreo-stage-recovery.js"></script>
+<script src="choreo-stage-replay.js"></script>
+<script src="choreo-stage-readiness.js"></script>
+<script src="choreo-stage-game-ui.js"></script>
+<script src="choreo-show-entry.js"></script>
+<script src="choreo-ability-plan.js"></script>
+<script src="choreo-skill-records.js"></script>
+<script src="choreo-skill-game.js"></script>
+<script src="choreo-skill-stages.js"></script>
+<script src="choreo-skill-motion.js"></script>
+<script src="choreo-skill-metadata.js"></script>
+<script src="choreo-skill-legality.js"></script>
+<script src="choreo-skill-timing-ui.js"></script>
+<script src="choreo-skill-coverage.js"></script>
+<script src="choreo-skill-import.js"></script>
+<script src="choreo-skill-motion-ui.js"></script>
+<script src="choreo-ability-plan-targets.js"></script>
+<script src="choreo-ability-ui.js"></script>
+<script src="choreo-ability-preview.js"></script>
+<script src="preview3d.js"></script>
+<!-- 阶段2：离线快照（make-offline-assets.js 生成，缺失时页面照常跑） -->
+<script src="catalog-snapshot.js"></script>
+<script src="skeleton-snapshot.js"></script>
+<!-- DANCER-AUTOADAPT：离线 18 族骨架包（make-skeleton-pack.js 生成） -->
+<script src="skeleton-pack.js"></script>
+<script src="standin-model.js"></script>
+<script src="choreo-macro.js"></script>
+<script src="choreo-macro-ui.js"></script>
+<script src="choreo-gearset.js"></script>
+<script src="choreo-ability-read.js"></script>
+<!-- P5：渲染时钟/窗口化纯模块，先于控制器 -->
+<script src="choreo-render-perf.js"></script>
+<script src="choreo-app.js"></script>
+<!-- 以下 UI 均为纯视图模块：控制器之后、bootstrap 之前 -->
+<script src="choreo-props-ui.js"></script>
+<script src="choreo-stage-ui.js"></script>
+<script src="choreo-music-ui.js"></script>
+<script src="choreo-library-ui.js"></script>
+<script src="choreo-xat-convert-ui.js"></script>
+<script src="choreo-check-ui.js"></script>
+<script src="choreo-project-ui.js"></script>
+<script src="choreo-recording-ui.js"></script>
+<script src="choreo-lyrics-ui.js"></script>
+<script src="choreo-show-owned.js"></script>
+<script src="choreo-show-ui.js"></script>
+<!-- P4：Ctrl+K 命令面板纯视图 -->
+<script src="choreo-cmdk-ui.js"></script>
+<script src="choreo-ensemble-app.js"></script>
+<script src="choreo-stop.js"></script>
+<script src="choreo-bootstrap.js"></script>
+</body>
+</html>

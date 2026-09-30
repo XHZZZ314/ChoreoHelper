@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<!--
+  mode-check.html — 阶段1「模式分流」可重复诊断页（源文件保留在 web\，部署位用完可删）
+  干什么：iframe 加载真实编舞主页，验证阶段1验收点——
+    ① 默认进「网页 3D」模式，编辑器不被插件连接挡住（appReady 即渲染），3D 面板自动打开
+    ② web 模式：播放立即起播、暂停、停止归零，全程对 48794 零请求
+    ③ web 模式 sendSeek 不发请求
+    ④ 切到「游戏角色」：模式生效、编辑器不塌；FIX-B 升级——页面内 mock 插件（包装 iframe 的
+       fetch）持有当前 revision：验证进游戏模式自动推时间轴快照（/playback/timeline，带
+       clips+revision）、seek 请求体带 time+revision、mock 回 409 后自动重推快照并重试；
+       切回网页时自动 stop+解冻游戏
+  ④b 播放键本体携带模式（REQ-SPEC-027，TASK-20260905-DUAL-MODE-CLOSEOUT）：停止/播放 ×
+       网页/游戏 四种组合下按键文字都区分「网页播放/游戏内播放」（断言分散在 ①②④④b⑤），
+       tooltip 保留；游戏模式播放/暂停/业务失败起播期间 mock 接管 /playback/freeze、
+       /playback/start、/playback/stop（业务失败体复刻 v0.7.1「HTTP 200 包 {error}」形状），
+       绝不真启停游戏；切回网页后标签随工具栏重建刷新，无残留游戏标签
+  请求计数用 iframe 的 PerformanceResourceTiming（fetch 也会留 resource 条目），
+  计数前先停掉主页的实测时长轮询（它每 5 秒打 48794，会误报）。
+  结果写进本页正文与标题（MODE-PASS / MODE-FAIL: n），供无障碍读取和 headless 抓取。
+  游戏开着或关着都能跑：游戏关着时第 ④ 组降级为"只验证切换不崩"、④b 整组跳过（四组合里
+  游戏 × 播放 那一组需要 mock 在线），结果里注明。
+-->
+<html lang="zh">
+<head><meta charset="utf-8"><title>MODE-CHECK</title>
+<style>body{background:#111;color:#dfd;font:14px/1.8 monospace;margin:20px;white-space:pre-wrap}iframe{width:960px;height:620px;border:1px solid #444;display:block;margin-top:10px}</style>
+</head>
+<body>
+<div id="log">等待主页就绪…</div>
+<iframe id="f" src="./choreo-helper-app.html"></iframe>
+<script>
+var logEl = document.getElementById('log');
+var fails = 0, passes = 0;
+function L(s){ logEl.textContent += '\n' + s; }
+function ok(name, cond, detail){
+  if (cond) { passes++; L('  ✔ ' + name + (detail ? '（' + detail + '）' : '')); }
+  else { fails++; L('  ✘ ' + name + (detail ? '（' + detail + '）' : '')); }
+  document.title = 'MODE|' + passes + '过' + fails + '败';
+}
+function finish(){
+  var verdict = fails ? 'MODE-FAIL:' + fails : 'MODE-PASS';
+  L('[完成] ' + passes + ' 项通过，' + fails + ' 项失败');
+  document.title = verdict;
+}
+
+(function wait(attempt){
+  var w = document.getElementById('f').contentWindow;
+  var s = w && w.store;
+  var ready = s && s.appReady && w.document.getElementById('root') && w.document.getElementById('root').children.length;
+  if (!ready) { if (attempt > 100) { L('超时：主页未就绪（appReady=' + (s && s.appReady) + '）'); finish(); return; } setTimeout(function(){wait(attempt+1);}, 300); return; }
+  // 给后台 probeGame/3D面板初始化一点时间，然后停掉 48794 的周期轮询，避免计数误报
+  setTimeout(function(){ run(w, s); }, 1200);
+})(0);
+
+function cnt48794(w, path){
+  try {
+    // 排除 /health 和 /capabilities：都是连接探测（probeGame、断连监视器、capsOk 15s 自愈），
+    // 与播放控制无关——被测语义是「不发播放/seek/stop 请求」。/health 的误报修过一次；
+    // WP-1 又加了 capsOk 过期每 15s 自愈，同样会撞进「零请求」窗口，一并排除。
+    // FIX-4 补：/settings/engine、/gpose/state 也是 probeGame 连接期顺带发的，同样排除
+    return w.performance.getEntriesByType('resource').filter(function(e){
+      return e.name.indexOf(':48794') >= 0 && e.name.indexOf('/health') < 0 && e.name.indexOf('/capabilities') < 0
+        && e.name.indexOf('/settings/engine') < 0 && e.name.indexOf('/gpose/state') < 0
+        && (!path || e.name.indexOf(path) >= 0);
+    }).length;
+  } catch (e) { return -1; }
+}
+// REQ-SPEC-027：播放键（renderToolbar 给它 id=playBtn；render() 每次重建，所以每次断言都重新取）
+function playBtn(w){ try { return w.document.getElementById('playBtn'); } catch (e) { return null; } }
+function btnText(b){ return b ? b.textContent : '（没找到播放键）'; }
+
+function run(w, s){
+  // 停掉实测时长轮询（它定时打 48794）；结束后恢复
+  if (w._measuredTimer) { w.clearInterval(w._measuredTimer); w._measuredTimer = null; }
+  // 停掉连接监视器（游戏离线时它每 15s 探测 48794 /health，会把「零请求」断言误报成 0→1）；
+  // 游戏在线时它本来就不轮询（gameConnected=true 早退），停它不影响任何被测行为。
+  // 存到 iframe 的 window 上供 backToWeb 收尾时恢复（backToWeb 是顶层函数，够不着这里的局部变量）
+  w._savedConnTimer = w._connTimer;
+  if (w._connTimer) { w.clearInterval(w._connTimer); w._connTimer = null; }
+
+  L('== ① 默认网页模式与编辑器可用性 ==');
+  ok('默认 previewTarget=web', s.previewTarget === 'web', '实际=' + s.previewTarget);
+  ok('appReady 且编辑器已渲染', !!s.appReady && w.document.getElementById('root').children.length > 0);
+  var panel = w.document.getElementById('p3dPanel');
+  ok('3D 面板自动打开', !!(panel && panel.classList.contains('open')), panel ? '面板存在' : '无面板');
+  var mtBtn = null;
+  try { w.document.querySelectorAll('button').forEach(function(b){ if (b.textContent.indexOf('网页 3D') >= 0) mtBtn = b; }); } catch (e) {}
+  ok('工具栏有「网页 3D」模式按钮', !!mtBtn, mtBtn ? ('文字=' + mtBtn.textContent) : '没找到');
+  ok('侧栏动作面板已渲染（目录可为空）', !!w.document.querySelector('.act-list'));
+  // REQ-SPEC-027：停止态 × 网页——按键本体文字带「网页播放」、不带游戏字样；tooltip 照旧保留
+  var pb0 = playBtn(w);
+  ok('停止态播放键文字带「网页播放」', !!pb0 && pb0.textContent.indexOf('网页播放') >= 0 && pb0.textContent.indexOf('游戏') < 0, '文字=' + btnText(pb0));
+  ok('播放键 tooltip 保留（当前：网页播放）', !!pb0 && pb0.title.indexOf('当前：') >= 0 && pb0.title.indexOf('网页播放') >= 0, pb0 ? ('title=' + pb0.title) : '没找到');
+
+  L('== ② web 模式播放/暂停/停止：全程对 48794 零请求 ==');
+  var base = cnt48794(w);
+  var t0 = s.currentTime;
+  w.togglePlay(); // 播放
+  setTimeout(function(){
+    var t1 = s.currentTime;
+    ok('播放立即进入播放态（不等插件）', s.isPlaying === true);
+    ok('播放头在走', t1 > t0, t0.toFixed(2) + '→' + t1.toFixed(2));
+    var c1 = cnt48794(w);
+    ok('播放期间对 48794 零新增请求', c1 === base, base + '→' + c1);
+    // REQ-SPEC-027：播放态 × 网页——⏸ 且仍带「网页播放」
+    var pb1 = playBtn(w);
+    ok('播放态播放键文字带 ⏸ 与「网页播放」', !!pb1 && pb1.textContent.indexOf('\u23F8') >= 0 && pb1.textContent.indexOf('网页播放') >= 0, '文字=' + btnText(pb1));
+    w.togglePlay(); // 暂停
+    setTimeout(function(){
+      ok('暂停后停止播放', s.isPlaying === false);
+      var c2 = cnt48794(w);
+      ok('暂停对 48794 零新增请求', c2 === c1, c1 + '→' + c2);
+      // REQ-SPEC-027：暂停后回到 ▶ 且仍带「网页播放」
+      var pb2 = playBtn(w);
+      ok('暂停态播放键文字带 ▶ 与「网页播放」', !!pb2 && pb2.textContent.indexOf('\u25B6') >= 0 && pb2.textContent.indexOf('网页播放') >= 0, '文字=' + btnText(pb2));
+      w.stopPlay(); // 停止归零
+      setTimeout(function(){
+        ok('停止归零 currentTime=0', Math.abs(s.currentTime) < 1e-9, '实际=' + s.currentTime);
+        var c3 = cnt48794(w);
+        ok('停止对 48794 零新增请求', c3 === c2, c2 + '→' + c3);
+        L('== ③ web 模式拖动（sendSeek）不发请求 ==');
+        var s0 = cnt48794(w, '/playback/seek');
+        w.sendSeek(5.5);
+        setTimeout(function(){
+          var s1 = cnt48794(w, '/playback/seek');
+          ok('web 模式 sendSeek 零请求', s1 === s0, s0 + '→' + s1);
+          gameMode(w, s);
+        }, 400);
+      }, 300);
+    }, 400);
+  }, 500);
+}
+
+// FIX-B：页面内 mock 插件——包装 iframe 的 fetch，记录 /playback/timeline 与
+// /playback/seek 的 POST body（「mock 插件持有当前 revision，并收到预期请求计划」）；
+// __mcSeek409Once 置位时，下一次 seek 不发网络、直接回 409（模拟插件时间轴过期），
+// 用于验证网页「409 → 重推快照 → 重试」的自愈链路。
+// REQ-SPEC-027 扩展：__mcMockPlayback 置位的窗口内，/playback/freeze、/playback/start、
+// /playback/stop 全部由 mock 应答、不发网络——游戏模式播放/暂停断言不真启停游戏；
+// __mcStartFailOnce 置位时下一次 start 回「HTTP 200 包 {error}」的 v0.7.1 业务失败形状，
+// 验证 gameStartPlay 看响应体、不进假播放态的护栏不变。窗口外这三条路径原样直通真插件
+// （⑤ 切回网页的 stop 计数仍走真网络）。
+function installReqLog(w){
+  w.__mcLog = [];
+  w.__mcSeek409Once = false;
+  w.__mcMockPlayback = false;
+  w.__mcStartFailOnce = false;
+  w.__mcOrigFetch = w.fetch;
+  var of = w.fetch.bind(w);
+  var jsonResp = function(body, status){ return Promise.resolve(new w.Response(body, { status: status || 200, headers: { 'Content-Type': 'application/json' } })); };
+  w.fetch = function(url, opts){
+    var u = String(url);
+    var entry = null;
+    if (u.indexOf('/playback/timeline') >= 0) entry = { kind: 'timeline', raw: (opts && opts.body) || '' };
+    else if (u.indexOf('/playback/seek') >= 0) entry = { kind: 'seek', raw: (opts && opts.body) || '' };
+    else if (u.indexOf('/playback/start') >= 0) entry = { kind: 'start', raw: (opts && opts.body) || '' };
+    else if (u.indexOf('/playback/freeze') >= 0) entry = { kind: 'freeze', raw: (opts && opts.body) || '' };
+    else if (u.indexOf('/playback/stop') >= 0) entry = { kind: 'stop', raw: (opts && opts.body) || '' };
+    if (entry) {
+      try { entry.parsed = JSON.parse(entry.raw); } catch (e) { entry.parsed = null; }
+      w.__mcLog.push(entry);
+      if (entry.kind === 'seek' && w.__mcSeek409Once) {
+        w.__mcSeek409Once = false;
+        return Promise.resolve(new w.Response('{"error":"stale timeline","message":"mock: revision 过期"}', { status: 409 }));
+      }
+      if (w.__mcMockPlayback) {
+        if (entry.kind === 'freeze' || entry.kind === 'stop') return jsonResp('{"ok":true}');
+        if (entry.kind === 'start') {
+          if (w.__mcStartFailOnce) {
+            w.__mcStartFailOnce = false;
+            return jsonResp('{"error":"mock-business","message":"mock: 业务失败（不得进入播放态）"}');
+          }
+          return jsonResp('{"status":"playing"}');
+        }
+      }
+    }
+    return of(url, opts);
+  };
+}
+function mcReqs(w, kind){ return (w.__mcLog || []).filter(function(e){ return e.kind === kind; }); }
+function waitFor(cond, cb, timeoutMs){
+  var t0 = Date.now();
+  (function poll(){
+    if (cond()) { cb(true); return; }
+    if (Date.now() - t0 > (timeoutMs || 5000)) { cb(false); return; }
+    setTimeout(poll, 150);
+  })();
+}
+
+function gameMode(w, s){
+  L('== ④ 游戏角色模式 ==');
+  var wasConnected = !!s.gameConnected;
+  L('  当前游戏连接：' + (wasConnected ? '在线（页内 mock 验证 revision/快照/409 自愈）' : '离线（降级：只验证切换不崩）'));
+  installReqLog(w); // FIX-B：装记录器要在 switchPreviewTarget 之前（进游戏模式就会推快照）
+  w.switchPreviewTarget();
+  setTimeout(function(){
+    ok('切到游戏模式 previewTarget=game', s.previewTarget === 'game', '实际=' + s.previewTarget);
+    ok('切换后编辑器不塌', w.document.getElementById('root').children.length > 0);
+    // REQ-SPEC-027：停止态 × 游戏——切模式后工具栏重建，按键文字换成「游戏内播放」、不带网页字样
+    var pbg = playBtn(w);
+    ok('游戏模式停止态播放键文字带「游戏内播放」', !!pbg && pbg.textContent.indexOf('游戏内播放') >= 0 && pbg.textContent.indexOf('网页') < 0, '文字=' + btnText(pbg));
+    if (s.gameConnected) {
+      // FIX-B：进游戏模式应自动推一次时间轴快照（「未按播放就能拖动定格」的前提）
+      waitFor(function(){ return mcReqs(w, 'timeline').length >= 1; }, function(got){
+        var tl = got ? mcReqs(w, 'timeline')[mcReqs(w, 'timeline').length - 1] : null;
+        ok('进游戏模式自动推时间轴快照（/playback/timeline）', !!tl);
+        ok('快照带 revision 且与 store 当前一致', !!tl && tl.parsed && tl.parsed.revision === s._tlRevision,
+          tl && tl.parsed ? ('插件侧=' + tl.parsed.revision) : '无 body');
+        ok('快照带 clips 数组（actorId 演员维度）', !!tl && tl.parsed && Array.isArray(tl.parsed.clips)
+          && tl.parsed.clips.every(function(c){ return typeof c.actorId === 'number'; }));
+        // mock 插件持有当前 revision；模拟「旧 revision seek → 409 → 重推快照 → 重试」
+        w.__mcSeek409Once = true;
+        w.sendSeek(2.5);
+        waitFor(function(){ return mcReqs(w, 'seek').length >= 2 && mcReqs(w, 'timeline').length >= 2; }, function(got2){
+          var seeks = mcReqs(w, 'seek');
+          ok('game 模式拖动发 seek（time=2.5 + revision）', seeks.length >= 1 && seeks[0].parsed
+            && seeks[0].parsed.time === 2.5 && typeof seeks[0].parsed.revision === 'number');
+          ok('mock 回 409 后自动重推快照并重试（2 次 seek + 2 次快照）', !!got2,
+            'seek=' + seeks.length + ' timeline=' + mcReqs(w, 'timeline').length);
+          ok('重试 seek 的 revision 与插件持有一致（同一 revision 重推后重试）',
+            seeks.length >= 2 && seeks[seeks.length - 1].parsed
+            && seeks[seeks.length - 1].parsed.revision === s._tlRevision);
+          gamePlayLabel(w, s);
+        }, 6000);
+      }, 6000);
+    } else {
+      ok('离线时游戏模式仍可编辑', w.document.getElementById('root').children.length > 0);
+      w.fetch = w.__mcOrigFetch;
+      backToWeb(w, s, false);
+    }
+  }, 1200);
+}
+
+// REQ-SPEC-027：游戏模式 播放态/暂停态/业务失败起播 的按键标签（四组合里的「游戏 × 播放」）。
+// 全程 __mcMockPlayback 窗口：freeze/start/stop 都由页内 mock 应答，不真启停游戏；
+// gameStartPlay 要求预览舞者名下有条目才会发 start，所以先临时塞一条 /bow，结束后原样移除。
+var MC_CLIP_ID = 990001;
+function gamePlayLabel(w, s){
+  L('== ④b 游戏模式播放键标签（mock start/stop，不真启停游戏） ==');
+  var pdx = (typeof w.gameActorIdx === 'function') ? w.gameActorIdx() : 0;
+  if (pdx < 0) pdx = 0;
+  var pd = s.dancers[pdx];
+  var injected = false;
+  if (pd && Array.isArray(pd.actionClips) && !pd.actionClips.length) {
+    pd.actionClips.push({ id: MC_CLIP_ID, start: 0, duration: 30, autoDur: false,
+      data: { id: 0, name: '鞠躬', command: '/bow', category: 'usual', jobName: '', jobId: 0, jobAbbr: '' } });
+    if (typeof w.updateTotalDuration === 'function') w.updateTotalDuration();
+    injected = true;
+  }
+  var done = function(){
+    w.__mcMockPlayback = false; w.__mcStartFailOnce = false;
+    if (injected && pd) { pd.actionClips = pd.actionClips.filter(function(c){ return c.id !== MC_CLIP_ID; }); if (typeof w.updateTotalDuration === 'function') w.updateTotalDuration(); }
+    w.fetch = w.__mcOrigFetch; // 还原真实 fetch（⑤ 的 stop 计数走真网络）
+    backToWeb(w, s, true);
+  };
+  w.__mcMockPlayback = true;
+  w.gameStartPlay();
+  waitFor(function(){ return mcReqs(w, 'start').length >= 1 && s.isPlaying === true; }, function(gotS){
+    var pbp = playBtn(w);
+    ok('游戏模式起播（mock start 回 status=playing）进入播放态', !!gotS && s.isPlaying === true, 'start=' + mcReqs(w, 'start').length + ' isPlaying=' + s.isPlaying);
+    ok('播放态播放键文字带 ⏸ 与「游戏内播放」', !!pbp && pbp.textContent.indexOf('\u23F8') >= 0 && pbp.textContent.indexOf('游戏内播放') >= 0, '文字=' + btnText(pbp));
+    w.togglePlay(); // 暂停：游戏模式发 /playback/stop——窗口内 mock 应答
+    setTimeout(function(){
+      var pbq = playBtn(w);
+      ok('游戏模式暂停后 isPlaying=false', s.isPlaying === false);
+      ok('暂停态播放键文字带 ▶ 与「游戏内播放」', !!pbq && pbq.textContent.indexOf('\u25B6') >= 0 && pbq.textContent.indexOf('游戏内播放') >= 0, '文字=' + btnText(pbq));
+      ok('暂停的 stop 被 mock 接管（未打真插件）', mcReqs(w, 'stop').length >= 1, 'stop=' + mcReqs(w, 'stop').length);
+      // 业务失败起播：HTTP 200 包 {error}——不得出现假播放态，标签仍带模式（护栏不变）
+      var startsBefore = mcReqs(w, 'start').length;
+      w.__mcStartFailOnce = true;
+      w.gameStartPlay();
+      waitFor(function(){ return mcReqs(w, 'start').length >= startsBefore + 1; }, function(gotF){
+        setTimeout(function(){
+          var pbf = playBtn(w);
+          ok('业务失败起播后 isPlaying 仍为 false（无假播放态护栏不变）', !!gotF && s.isPlaying === false, 'isPlaying=' + s.isPlaying);
+          ok('失败后播放键文字仍带 ▶ 与「游戏内播放」', !!pbf && pbf.textContent.indexOf('\u25B6') >= 0 && pbf.textContent.indexOf('游戏内播放') >= 0, '文字=' + btnText(pbf));
+          done();
+        }, 300);
+      }, 6000);
+    }, 500);
+  }, 6000);
+}
+
+function backToWeb(w, s, wasConnected){
+  L('== ⑤ 切回网页模式 ==');
+  var stop0 = cnt48794(w, '/playback/stop');
+  w.switchPreviewTarget();
+  setTimeout(function(){
+    ok('切回网页 previewTarget=web', s.previewTarget === 'web', '实际=' + s.previewTarget);
+    // REQ-SPEC-027：切回后工具栏重建，标签刷新为「网页播放」，无残留游戏标签
+    var pbw = playBtn(w);
+    ok('切回网页后播放键文字刷新为「网页播放」（无残留游戏标签）', !!pbw && pbw.textContent.indexOf('网页播放') >= 0 && pbw.textContent.indexOf('游戏') < 0, '文字=' + btnText(pbw));
+    if (wasConnected) {
+      var stop1 = cnt48794(w, '/playback/stop');
+      ok('切回时向游戏发 stop 解冻', stop1 >= stop0 + 1, stop0 + '→' + stop1);
+    } else {
+      L('  （游戏离线，跳过 stop 计数）');
+    }
+    // 收尾：恢复实测时长轮询和连接监视器，播放头归零
+    w.stopPlay();
+    if (!w._measuredTimer && s.gameConnected) w._measuredTimer = w.setInterval(w.refreshMeasured, 5000);
+    if (!w._connTimer && w._savedConnTimer && w.startConnWatch) w.startConnWatch(); // 它自己会重建 15s 定时器
+    finish();
+  }, 800);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChoreoEngine · glTF 真实模型预览</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0f1117; color:#e6e9f2; font-family:"Microsoft YaHei","PingFang SC",sans-serif; overflow:hidden; }
+  #canvas { display:block; width:100vw; height:100vh; }
+  .panel { position:fixed; left:16px; bottom:16px; right:16px; z-index:10; background:rgba(20,24,40,.92); border:1px solid #2a2f42; border-radius:12px; padding:14px 18px; backdrop-filter:blur(8px); }
+  .row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .row + .row { margin-top:10px; }
+  .btn { background:#232838; color:#e6e9f2; border:1px solid #3a4160; border-radius:8px; padding:6px 16px; cursor:pointer; font-size:13px; }
+  .btn:hover { background:#2c3350; }
+  .btn.active { background:#5b8cff; border-color:#5b8cff; color:#fff; }
+  .lbl { font-size:12px; color:#8b93ab; white-space:nowrap; }
+  .val { font-size:13px; color:#9ecbff; min-width:60px; font-family:Consolas,monospace; }
+  input[type=range] { flex:1; accent-color:#5b8cff; }
+  select, .sel { background:#232838; color:#e6e9f2; border:1px solid #3a4160; border-radius:6px; padding:4px 8px; font-size:13px; }
+  .title { font-size:12px; color:#8b93ab; white-space:nowrap; }
+  .tag { display:inline-block; background:rgba(61,220,132,.12); color:#3ddc84; border:1px solid rgba(61,220,132,.35); border-radius:20px; padding:1px 10px; font-size:11px; margin-left:8px; }
+  .hint { font-size:11.5px; color:#5f6880; margin-top:8px; line-height:1.6; }
+  #status { position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:20; background:rgba(20,24,40,.85); border:1px solid #2a2f42; border-radius:8px; padding:6px 16px; font-size:12px; color:#9ecbff; display:none; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="status">加载模型中…（需联网：Three.js CDN + Khronos 示例模型）</div>
+
+<div class="panel">
+  <div class="row">
+    <span class="title">ChoreoEngine + glTF 适配器 · 真实 3D 模型骨骼驱动<span class="tag">模型链路已通</span></span>
+    <button class="btn active" id="btnPlay">⏸ 暂停</button>
+    <span class="lbl">播放头</span>
+    <span class="val" id="timeVal">0.0s</span>
+    <input type="range" id="seekBar" min="0" max="1200" value="0">
+    <span class="val" id="durVal">12s</span>
+    <span class="lbl">速度</span>
+    <select id="speedSel">
+      <option value="0.25">0.25x</option><option value="0.5">0.5x</option>
+      <option value="1" selected>1x</option><option value="1.5">1.5x</option><option value="2">2x</option>
+    </select>
+    <label class="lbl"><input type="checkbox" id="autoRot" checked> 旋转</label>
+  </div>
+  <div class="hint">
+    模型：Khronos 示例（RiggedSimple，真实蒙皮骨骼）— 替身；回家后换成导出的<b>你的角色 glTF</b>，驱动代码零改动。
+    动画：程序化（替身数据）— 回家后换成 pap 解析/录制的<b>真实动作</b>，格式零改动。
+    <b>拖动进度条 = 时间轴倒推</b>，看模型骨骼实时对位。
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="choreo-engine.js"></script>
+<script src="gltf-adapter.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const statusEl = $('status');
+const showStatus = (t, keep) => { statusEl.textContent = t; statusEl.style.display = 'block'; if (!keep) setTimeout(()=>statusEl.style.display='none', 4000); };
+
+// ============ 场景 ============
+const canvas = $('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f1117);
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, .1, 100);
+camera.position.set(2.2, 1.8, 3.0);
+camera.lookAt(0, 0.9, 0);
+scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x3a2f28, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(2,4,3); scene.add(key);
+const grid = new THREE.GridHelper(6, 12, 0x2a2f42, 0x1a1f33); scene.add(grid);
+
+// ============ 引擎 + glTF 角色 ============
+const engine = new ChoreoEngine.PreviewEngine();
+
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/RiggedSimple/glTF/RiggedSimple.gltf';
+
+async function boot(){
+  try {
+    // 空 idle（模型自身 rest pose = 初始骨架姿势）
+    const idleClip = { name:'idle', duration:3, type:'loop', bones:{} };
+    engine.registerClip(idleClip);
+
+    const handle = await ChoreoGLTF.createGlTFCharacter(engine, {
+      scene, name:'A', gltfUrl: MODEL_URL, idleClip,
+    });
+    showStatus(`模型已加载（${Object.keys(handle.boneMap).length} 根骨骼）`, true);
+
+    // 用模型真实骨骼名生成替身动画（换真实数据时删掉这段，改用 index.json 的 clips）
+    const dance = ChoreoGLTF.generateDemoClip(handle.boneMap, 'dance', 2.4, 'loop', { twist:true });
+    const bow = ChoreoGLTF.generateDemoClip(handle.boneMap, 'bow', 1.6, 'once', {});
+    const salute = ChoreoGLTF.generateDemoClip(handle.boneMap, 'salute', 1.9, 'once', {});
+    engine.registerClip(dance); engine.registerClip(bow); engine.registerClip(salute);
+
+    engine.setTimeline([
+      { char:'A', clipName:'dance', start:0, opts:{ loop:true } },
+      { char:'A', clipName:'bow', start:4, opts:{} },
+      { char:'A', clipName:'salute', start:6, opts:{} },
+      { char:'A', clipName:'dance', start:8, opts:{ loop:true } },
+    ]);
+    engine.play();
+    return handle;
+  } catch (ex) {
+    showStatus('模型加载失败：' + ex.message + '（需要联网访问 jsdelivr；可换本地 glTF 路径试）', true);
+    console.error(ex);
+    return null;
+  }
+}
+
+// ============ UI ============
+const seekBar = $('seekBar'), timeVal = $('timeVal'), durVal = $('durVal');
+let handle = null;
+function sync(){
+  timeVal.textContent = engine.time.toFixed(1)+'s';
+  seekBar.value = Math.min(1200, Math.round(engine.time/12*1200));
+  $('btnPlay').textContent = engine.playing ? '⏸ 暂停' : '▶ 播放';
+  $('btnPlay').classList.toggle('active', engine.playing);
+}
+$('btnPlay').onclick = () => { engine.playing ? engine.pause() : engine.play(); sync(); };
+$('speedSel').onchange = e => engine.setSpeed(parseFloat(e.target.value));
+$('autoRot').onchange = e => { autoRotate = e.target.checked; };
+let autoRotate = true;
+seekBar.addEventListener('input', e => {
+  if (engine.playing) engine.pause();
+  engine.scrubTo(e.target.value/1200*12);
+  sync();
+});
+
+// ============ 主循环 ============
+let last = performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min((now-last)/1000, .05); last = now;
+  engine.update(now);
+  if (handle && handle.skinned) handle.updateSkin();
+  if (autoRotate && handle && handle.model) {
+    handle.model.rotation.y += dt * 0.4;
+  }
+  renderer.render(scene, camera);
+  sync();
+}
+addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+boot().then(h => { handle = h; loop(last); }).catch(()=>loop(last));

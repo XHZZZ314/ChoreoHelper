@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FF14 编舞时间轴 v6.1(歌词双语)</title>
+<link rel="stylesheet" href="choreo-helper-app.css">
+</head>
+<body>
+<div id="root" class="app"></div>
+<div class="loading" id="loading"><div class="spin"></div><div class="load-tx" id="loadTx">正在连接 ChoreoHelper API...</div></div>
+<div class="toast" id="toast"></div>
+<div class="ctx" id="ctxMenu"></div>
+<div class="tip" id="tooltip"></div>
+<!-- ARCH-2（本地 API 客户端）：choreo-api.js 是 48794/48795 两个本地 HTTP 客户端的唯一出口，
+     必须先于所有消费方加载（test-shell 断言） -->
+<script src="choreo-api.js"></script>
+<script src="choreo-engine.js"></script>
+<script src="choreo-library.js"></script>
+<script src="choreo-projects.js"></script>
+<!-- WP-5（规范演出文档）：choreo-document.js 是纯文档模块，choreo-docwire.js 是持久化接线层；
+     主页控制器的装载/保存/导入/导出依赖它们，必须在控制器之前按序加载（test-shell 断言） -->
+<script src="choreo-document.js"></script>
+<script src="choreo-docwire.js"></script>
+<!-- EXEC-CORE（演出执行）：choreo-show-compiler.js 是纯编译模块（规范文档→演出包），必须在
+     控制器之前加载；演出执行面板随特性层加载（走 /shows/* 独立通道） -->
+<script src="choreo-show-compiler.js"></script>
+<script src="choreo-edit.js"></script>
+<script src="choreo-check.js"></script>
+<script src="preview3d.js"></script>
+<!-- 阶段2（离线启动）：内置快照——游戏没开时侧栏目录 / 3D 骨架 / 替身模型的数据源
+     （scripts\make-offline-assets.js 生成；文件缺失时页面照常跑，只是离线没目录/没 3D） -->
+<script src="catalog-snapshot.js"></script>
+<script src="skeleton-snapshot.js"></script>
+<script src="standin-model.js"></script>
+<script src="choreo-app.js"></script>
+<script src="choreo-library-ui.js"></script>
+<script src="choreo-check-ui.js"></script>
+<script src="choreo-project-ui.js"></script>
+<script src="choreo-recording-ui.js"></script>
+<script src="choreo-lyrics-ui.js"></script>
+<script src="choreo-show-ui.js"></script>
+<script src="choreo-bootstrap.js"></script>
+</body>
+</html>

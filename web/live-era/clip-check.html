@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<!--
+  clip-check.html — 动作条交互优化（把手/死区/气泡/自动补齐/键盘微调）可重复验证页
+  干什么：iframe 载真实编舞主页，用合成鼠标/键盘事件驱动真实 renderClip/dragClip 验证：
+    ① 把手存在：宽条有左右把手，窄条只有右把手
+    ② 右把手拉长：只改时长不动起点；拖动中实时气泡出现
+    ③ 点击死区：位移 2px 零改动
+    ④ 拖动移动：条身拖动改起点；拖出空隙后前一条【不】被自动延长
+    ⑤ 拉左缘缩短：本条改，前一条【不】被自动延长（主人抱怨的根子）
+    ⑥ 删除后留缝：前一条保持不变
+    ⑦ 插入中间：只把新插入的条延长接住下一个（A 不动）
+    ⑧ 全量补齐（右键菜单同款调用）
+    ⑨ 键盘微调：→ 移动 +0.5s，Shift+→ 时长 +0.5s
+    ⑩ 吸附参考线：未吸附隐藏、吸附命中出现、松手隐藏
+  WP-3b（编辑基础）新增：
+    ⑪ 多选：Ctrl+点击加选/去选、Ctrl+A 全选、Esc 清空
+    ⑫ 框选：空白处拖矩形选中碰到的条（未覆盖的不选）
+    ⑬ 复制/粘贴：新 id、相对间距保持、粘贴条选中
+    ⑭ 对齐到播放头：选中条起点统一=播放头
+    ⑮ 插入/删除时间（prompt 打桩）：右移/ripple 左移
+    ⑯ A-B 循环：区间外起播拉回 A、到 B 回卷（加速播放实测）
+    ⑰ 段落标记：加标记进 store/标尺旗标/projectRecord、可撤销
+    ⑱ 独奏/静音：S/M 切换、静音轨调暗、payload 过滤、S/M 互斥
+    ⑲ 粘贴/复制腾位：横跨播放头的截断、后方整体右移、同轨零重叠
+  FIX-2（数据完整性，2026-08-29）新增：
+    ⑳ DOM 注入防护（AUD-002）：动作名/歌词/标记/舞者名注入 img/svg 不生成节点、文本原样显示、
+       哨兵不触发、零额外请求；导入层校验（超长/空 dancers/非数字时刻中文拒绝，正常工程照常导入）
+    ㉑ 撤销落盘 + 删除防复活（AUD-005/006）：undo/redo 后镜像立即=恢复后状态、showLyricMacro
+       跟撤销走；删当前项目先切走再删、自动保存不复活被删项目（全程用测试自建项目，不碰原项目）
+  FIX-3（时间轴正确性，2026-08-29）新增：
+    ㉒ 显式套装边界（AUD-010 修订）：addClip 不自动生成切职业条、currentJob 不自动改写；手工切换轨受保护
+       前条整体 +0.5 顺延、0 秒起点让位；真实 ChoreoCheck 体检零自造红项
+    ㉓ 快速录制清单（AUD-014）：草稿引用、不在 REC_QUICK 的动作进快速清单（新 data.command
+       与旧 command 结构都识别且去重）
+  FIX-4 实时体检（2026-08-29）新增：
+    ㉔ 红/黄描边高亮：重叠两条都 issue-red、缺录动作 issue-yellow、错开后描边清掉
+    ㉕ 拖动局部刷新（OPT-2/AUD-019）：拖动 6 步期间完整 render 不增长、被拖条 left 实时变、mouseup 才整页重建
+       （经 __checkRun 驱动 applyCheckIssues→render 的真实同步链路）
+  FIX-H（第三审计 P2 网页修复，2026-08-30）新增：
+    ㉖ 窄屏侧栏（AUD3-W1）：普通重绘后侧栏不丢 open、遮罩不卡、☰ 一次能关
+    ㉗ 标签列宽（AUD3-W2）：LABEL_W 与 .lane-label 实宽一致（普通112/窄屏64），点条视觉左缘恰好 seek 到起点
+    ㉘ Delete 键（AUD3-W3）：孤儿选中（条仍 selected=true 但 selectedClip=null）也能删掉
+    ㉙ 体检在线骨架比对走 48795（原 apiFetch 走 48794 必 404，规则从未生效）（AUD3-W4）
+  WEB-RACE（控制器竞态，2026-08-31）新增：
+    ㉚ 宏 600ms 防抖期间切 tab：旧定时器只写回原舞者，不得覆盖新 tab 舞者
+    ㉛ seek 409 重试只属于最新 seek：排队里的新时间不被旧时间借重试压过
+    ㉜ 拖动中 800ms 实时体检让路（不整页重绘、DOM 不重建），收尾保留一次最终检查
+    ㉝ 实测时长自动校正=时间轴变更：timelineRevision 递增并把新快照推给插件
+    ㉞ 空区点击跳播放头在游戏模式下与标尺/标记一致地下发 seek
+  两个坑（都踩过）：
+    - 无头新 profile 没有草稿，等待条件不能依赖时间轴上已有 .clip；
+    - 合成事件不能 mousedown/mousemove/mouseup 同步连发——dragClip 是 rAF 节流的，
+      mouseup 会取消还没跑的 rAF 回调，拖动永远不生效。事件之间必须留真实延时。
+  安全：测试会写 localStorage 草稿和项目库——开头备份（旧 choreo_draft 键 + 打开时的项目内容），
+        结尾原样恢复（store、localStorage、项目库镜像/IDB 都还原）。
+  结果写进正文与标题（CLIP-PASS / CLIP-FAIL:n）。
+-->
+<html lang="zh">
+<head><meta charset="utf-8"><title>CLIP-CHECK</title>
+<style>body{background:#111;color:#dfd;font:14px/1.8 monospace;margin:20px;white-space:pre-wrap}iframe{width:1100px;height:640px;border:1px solid #444;display:block;margin-top:10px}</style>
+</head>
+<body>
+<div id="log">等待主页就绪…</div>
+<iframe id="f" src="./choreo-helper-app.html"></iframe>
+<script>
+var logEl = document.getElementById('log');
+var fails = 0, passes = 0;
+function L(s){ logEl.textContent += '\n' + s; }
+function ok(name, cond, detail){
+  if (cond) { passes++; L('  ✔ ' + name + (detail ? '（' + detail + '）' : '')); }
+  else { fails++; L('  ✘ ' + name + (detail ? '（' + detail + '）' : '')); }
+  document.title = 'CLIP|' + passes + '过' + fails + '败';
+}
+function finish(){ L('[完成] ' + passes + ' 项通过，' + fails + ' 项失败'); document.title = fails ? ('CLIP-FAIL:' + fails) : 'CLIP-PASS'; }
+function tick(ms){ return new Promise(function(r){ setTimeout(r, ms || 70); }); }
+
+(function wait(attempt){
+  var w = document.getElementById('f').contentWindow;
+  var s = w && w.store;
+  var ready = s && s.appReady && w.document.querySelector('.act-list');
+  if (!ready) { if (attempt > 100) { fails++; L('超时：主页未就绪'); finish(); return; } setTimeout(function(){wait(attempt+1);}, 300); return; }
+  run(w, s);
+})(0);
+
+function mouse(w, target, type, x, y, extra){
+  var init = {bubbles:true, cancelable:true, clientX:x, clientY:y, button:0};
+  if (extra) for (var k in extra) init[k] = extra[k];
+  target.dispatchEvent(new w.MouseEvent(type, init));
+}
+function center(w, elm){
+  var r = elm.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r };
+}
+function putClip(w, name, start, dur){
+  var c = { id: w.store.nextClipId++, start: start, duration: dur, data: { name: name, command: '/' + name, category: 'usual' } };
+  w.store.dancers[0].actionClips.push(c);
+  return c;
+}
+function clipsDOM(w){ return w.document.querySelectorAll('#lanes .action-lane .lane-body .clip'); }
+
+async function run(w, s){
+  var draftBak = w.localStorage.getItem('choreo_draft');
+  var targetBak = w.localStorage.getItem('choreo_previewTarget');
+  var ppsBak = s.pps;
+  // WP-3（项目中心）：store 现在从项目记录加载——备份打开时的项目内容，结尾按它还原并回写项目库。
+  // 不能再按 choreo_draft 还原：那只备份了迁移前的旧底子，真 profile 里会把新项目覆盖回旧内容
+  var projBak = JSON.stringify({dancers:s.dancers, globalLyrics:s.globalLyrics, dancerCount:s.dancerCount, showLyricMacro:s.showLyricMacro, totalDuration:s.totalDuration, markers:s.markers||[]});
+  var loopBak = {a:s.loopA, b:s.loopB}; s.loopA = s.loopB = null; // WP-3b：循环区间是会话态，测试前清零
+
+  s.dancers = [w.makeDancer(0)];
+  s.selectedClip = null; s.dancerCount = 1;
+  var A = putClip(w, '甲', 0, 5), B = putClip(w, '乙', 5, 5);
+  s.pps = 60; w.render();
+  var cds = clipsDOM(w);
+
+  L('== ① 把手存在性 ==');
+  ok('渲染出 2 条动作条', cds.length === 2, '实际=' + cds.length);
+  var hA = cds[0].querySelector('.c-rz-r'), hAl = cds[0].querySelector('.c-rz-l');
+  ok('宽条(300px)有右把手', !!hA);
+  ok('宽条(300px)有左把手', !!hAl);
+  // P5 渲染窗口化后可见窗随视口宽走（本页 iframe 内约 0-11.3s）——短条放进可见窗内
+  var N = putClip(w, '短', 10, 0.5); w.render();
+  var cds2 = clipsDOM(w);
+  var cn = cds2[cds2.length - 1];
+  ok('窄条(30px)只有右把手', !!cn.querySelector('.c-rz-r') && !cn.querySelector('.c-rz-l'));
+  w.deleteClip(N.id); w.render();
+  cds = clipsDOM(w); hA = cds[0].querySelector('.c-rz-r');
+
+  L('== ② 右把手拉长：只改时长不动起点 ==');
+  var p0 = center(w, hA);
+  mouse(w, hA, 'mousedown', p0.x, p0.y);
+  await tick();
+  mouse(w, w.document, 'mousemove', p0.x + 120, p0.y);
+  await tick();
+  var tipMid = w.document.getElementById('dragTip');
+  ok('拖动中出现实时气泡', !!(tipMid && tipMid.style.display !== 'none' && tipMid.textContent.indexOf('时长') >= 0), tipMid ? tipMid.textContent : '无气泡');
+  mouse(w, w.document, 'mouseup', p0.x + 120, p0.y);
+  await tick();
+  ok('A 时长 5→7', A.duration === 7, '实际=' + A.duration);
+  ok('A 起点仍为 0', A.start === 0, '实际=' + A.start);
+  ok('B 未被波及', B.start === 5 && B.duration === 5);
+  ok('松手后气泡隐藏', !tipMid || tipMid.style.display === 'none');
+
+  L('== ③ 点击死区：2px 抖动零改动 ==');
+  var pB = center(w, cds[1]);
+  mouse(w, cds[1], 'mousedown', pB.x, pB.y);
+  await tick();
+  mouse(w, w.document, 'mousemove', pB.x + 2, pB.y + 1);
+  await tick();
+  mouse(w, w.document, 'mouseup', pB.x + 2, pB.y + 1);
+  await tick();
+  ok('B 起点/时长不变', B.start === 5 && B.duration === 5, B.start + '/' + B.duration);
+
+  L('== ④ 拖动移动：留缝不回填 ==');
+  mouse(w, cds[1], 'mousedown', pB.x, pB.y);
+  await tick();
+  mouse(w, w.document, 'mousemove', pB.x + 180, pB.y);
+  await tick();
+  mouse(w, w.document, 'mouseup', pB.x + 180, pB.y);
+  await tick();
+  ok('B 起点 5→8', B.start === 8, '实际=' + B.start);
+  ok('留缝后 A 不被自动延长（旧版会 5→8）', A.duration === 7, '实际=' + A.duration);
+
+  L('== ⑤ 拉左缘缩短：前一条不被抢改 ==');
+  w.render(); cds = clipsDOM(w);
+  var hBl = cds[1].querySelector('.c-rz-l');
+  ok('B(300px)有左把手', !!hBl);
+  if (hBl) {
+    var pL = center(w, hBl);
+    mouse(w, hBl, 'mousedown', pL.x, pL.y);
+    await tick();
+    mouse(w, w.document, 'mousemove', pL.x + 60, pL.y);  // +60px @60pps = +1s → B 左缘 8→9
+    await tick();
+    mouse(w, w.document, 'mouseup', pL.x + 60, pL.y);
+    await tick();
+    ok('B 左缘 8→9 且时长缩短', B.start === 9 && B.duration === 4, B.start + '/' + B.duration);
+    ok('A 保持 7 不被延长（主人抱怨点）', A.duration === 7, '实际=' + A.duration);
+  }
+
+  L('== ⑥ 删除后留缝：前一条不变 ==');
+  var dA = A.duration;
+  w.deleteClip(B.id);
+  ok('删除 B 后 A 不变', A.duration === dA, '实际=' + A.duration);
+
+  L('== ⑦ 插入中间：只延长新条接住下一个 ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null;
+  A = putClip(w, '甲', 0, 5); B = putClip(w, '乙', 10, 5);
+  w.render();
+  w.addClip(0, 'action', { name: '丙', command: '/bing', category: 'usual', duration: 2 }, 6);
+  var C = s.dancers[0].actionClips.filter(function(c){ return c.data.name === '丙'; })[0];
+  ok('新条落在 6s', C && C.start === 6, C && ('实际=' + C.start));
+  ok('新条自动延长接住 B（2→4s）', C && C.duration === 4, C && ('实际=' + C.duration));
+  ok('A 不被波及（保持 5）', A.duration === 5, '实际=' + A.duration);
+
+  L('== ⑧ 全量补齐（右键菜单同款调用） ==');
+  w.autoFillGaps(0);
+  ok('A 延长到 6 接住丙', A.duration === 6, '实际=' + A.duration);
+  ok('丙保持到 10', C.duration === 4 && (C.start + C.duration) === 10);
+
+  L('== ⑨ 键盘微调 ==');
+  s.selectedClip = C; C.selected = true; // 多选时代：平移走选集标志，单选也须置 selected
+  w.document.dispatchEvent(new w.KeyboardEvent('keydown', { code: 'ArrowRight', bubbles: true }));
+  ok('→ 起点 +0.5s', C.start === 6.5, '实际=' + C.start);
+  w.document.dispatchEvent(new w.KeyboardEvent('keydown', { code: 'ArrowRight', shiftKey: true, bubbles: true }));
+  ok('Shift+→ 时长 +0.5s', C.duration === 4.5, '实际=' + C.duration);
+
+  L('== ⑩ 吸附参考线 ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null;
+  A = putClip(w, '甲', 0, 5); B = putClip(w, '乙', 7, 5);
+  s.pps = 60; w.render();
+  cds = clipsDOM(w);
+  var pB2 = center(w, cds[1]);
+  mouse(w, cds[1], 'mousedown', pB2.x, pB2.y);
+  await tick();
+  mouse(w, w.document, 'mousemove', pB2.x - 60, pB2.y);   // 7→6，离 A.end=5 远，不吸附
+  await tick();
+  var g1 = w.document.getElementById('dragGuide');
+  var hiddenWhenFar = !g1 || g1.style.display === 'none';
+  mouse(w, w.document, 'mousemove', pB2.x - 108, pB2.y);  // 7→5.2，距 5 为 0.2<0.3 → 吸附到 5
+  await tick();
+  var g2 = w.document.getElementById('dragGuide');
+  var shownOnSnap = !!(g2 && g2.style.display !== 'none');
+  ok('未吸附时参考线隐藏', hiddenWhenFar);
+  ok('吸附命中时参考线出现', shownOnSnap);
+  mouse(w, w.document, 'mouseup', pB2.x - 108, pB2.y);
+  await tick();
+  ok('B 起点被吸到 A 末端 5', B.start === 5, '实际=' + B.start);
+  ok('松手后参考线隐藏', !g2 || g2.style.display === 'none');
+
+  L('== ⑪ 多选：Ctrl+点击 / Ctrl+A / Esc ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null;
+  A = putClip(w, '甲', 0, 5); B = putClip(w, '乙', 7, 5);
+  s.pps = 60; w.render();
+  cds = clipsDOM(w); pA1 = center(w, cds[0]); pB1 = center(w, cds[1]);
+  mouse(w, cds[0], 'mousedown', pA1.x, pA1.y, {ctrlKey:true});
+  await tick();
+  ok('Ctrl+点击 A：加选', A.selected === true && w.edSel().length === 1);
+  cds = clipsDOM(w); pB1 = center(w, cds[1]); // Ctrl+点击后 render() 重建过 DOM，重新取节点
+  mouse(w, cds[1], 'mousedown', pB1.x, pB1.y, {ctrlKey:true});
+  await tick();
+  ok('Ctrl+点击 B：两条都在选集', A.selected && B.selected && w.edSel().length === 2);
+  cds = clipsDOM(w); pA1 = center(w, cds[0]);
+  mouse(w, cds[0], 'mousedown', pA1.x, pA1.y, {ctrlKey:true});
+  await tick();
+  ok('再 Ctrl+点击 A：去选', A.selected === false && B.selected === true);
+  w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true }));
+  ok('Ctrl+A 全选', w.edSel().length === 2);
+  w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  ok('Esc 清空多选', w.edSel().length === 0 && w.store.selectedClip === null);
+
+  L('== ⑫ 框选：空白处拖矩形 ==');
+  cds = clipsDOM(w); pA1 = center(w, cds[0]); pB1 = center(w, cds[1]); // Esc 后重建过，重新取
+  mouse(w, cds[0], 'mousedown', pA1.x, pA1.y, {ctrlKey:true}); // 先给 A 造"已选"底子，验证框选（非追加）会清掉它
+  await tick();
+  cds = clipsDOM(w); pB1 = center(w, cds[1]);
+  var mqX = pB1.r.left - 20, mqY = pB1.r.top + pB1.r.height / 2; // B 左侧 20px = 轨道空白区
+  mouse(w, w.document.querySelector('#lanes .action-lane .lane-body'), 'mousedown', mqX, mqY);
+  await tick();
+  mouse(w, w.document, 'mousemove', mqX + 30, mqY + 10); // 越过 3px 死区，进入框选
+  await tick();
+  mouse(w, w.document, 'mousemove', pB1.r.right + 30, mqY + 10);
+  await tick();
+  mouse(w, w.document, 'mouseup', pB1.r.right + 30, mqY + 10);
+  await tick();
+  ok('框选矩形覆盖 B：B 选中', B.selected === true);
+  ok('A 在矩形外且非追加模式：A 不选', A.selected !== true);
+  ok('框选后播放头没被带走（click 被吞）', s.currentTime === 0, '实际=' + s.currentTime);
+
+  // 舞者标题行起拖也能框选（2026-08-29 第二轮反馈）
+  var hdr0 = w.document.querySelector('#lanes .dancer-grp .d-hdr');
+  var hr = hdr0.getBoundingClientRect();
+  mouse(w, hdr0, 'mousedown', pB1.r.left - 20, hr.top + hr.height / 2); // 从 A 右侧上方的标题行起拖
+  await tick();
+  mouse(w, w.document, 'mousemove', pB1.r.right + 30, pB1.y);
+  await tick();
+  mouse(w, w.document, 'mouseup', pB1.r.right + 30, pB1.y);
+  await tick();
+  ok('舞者标题行起拖也能框选（B 选中、A 不选）', B.selected === true && A.selected !== true,
+    'B=' + B.selected + ' A=' + A.selected);
+
+  L('== ⑬ 复制 / 粘贴（紧贴选中条） ==');
+  cds = clipsDOM(w); pA1 = center(w, cds[0]); // 框选后重建过，重新取
+  mouse(w, cds[0], 'mousedown', pA1.x, pA1.y, {ctrlKey:true}); // Ctrl+点击 A 追加进选集（B 已选中）
+  await tick();
+  ok('选集就绪（A+B）', w.edSel().length === 2);
+  w.copySelection();
+  var before = s.dancers[0].actionClips.length;
+  w.pasteSelection(); // 新语义：紧贴当前选中的 A（末端 5）之后；腾位把 B 推开
+  var all = s.dancers[0].actionClips;
+  var pasted = all.slice(before);
+  ok('粘贴出 2 条新 clip', pasted.length === 2);
+  ok('新 id 不与原件冲突', pasted.every(function(c){ return c.id !== A.id && c.id !== B.id; }));
+  ok('紧贴选中的 A 之后（5 和 12，相对间距保持）', pasted[0].start === 5 && pasted[1].start === 12, pasted.map(function(c){return c.start}).join('/'));
+  ok('腾位：原 B 右移 7→19', B.start === 19, '实际=' + B.start);
+  ok('粘贴条自动选中', pasted.every(function(c){ return c.selected === true; }));
+
+  L('== ⑭ 对齐到播放头 ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null;
+  A = putClip(w, '甲', 1, 3); B = putClip(w, '乙', 8, 4);
+  A.selected = true; B.selected = true; s.selectedClip = B;
+  s.currentTime = 3; w.render();
+  w.alignSelectionToPlayhead();
+  ok('两条起点都对齐到播放头 3s（时长不变）', A.start === 3 && B.start === 3 && A.duration === 3 && B.duration === 4);
+
+  L('== ⑮ 插入 / 删除时间（prompt 打桩） ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null; s.markers = [];
+  A = putClip(w, '甲', 0, 5); B = putClip(w, '乙', 7, 5);
+  var opPrompt = w.prompt; w.prompt = function(){ return '2'; };
+  s.currentTime = 6;
+  w.insDelTime(true);
+  ok('插入 2s@6：A 不动（在插入点前）', A.start === 0 && A.duration === 5);
+  ok('插入 2s@6：B 右移 7→9', B.start === 9, '实际=' + B.start);
+  w.insDelTime(false);
+  ok('删除 2s@6~8：B 左移回 7（区间内无条目，removed=0）', B.start === 7, '实际=' + B.start);
+  ok('删除后播放头吸附到区间头（6 不变）', s.currentTime === 6);
+  w.prompt = opPrompt;
+
+  L('== ⑯ A-B 循环：区间外拉回 A、到 B 回卷 ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null;
+  putClip(w, '甲', 0, 20);
+  s.previewTarget = 'web'; s.speed = 4; // 4 倍速：真等 1 秒 = 虚拟 4 秒，循环 2s 区间必回卷
+  s.loopA = 1; s.loopB = 3; s.currentTime = 0;
+  w.render(); w.startPlay();
+  await tick(1200);
+  ok('播放中', s.isPlaying === true);
+  ok('播放头被约束在 A~B 内', s.currentTime >= 1 && s.currentTime < 3, '实际=' + s.currentTime.toFixed(2));
+  w.stopPlay();
+  s.speed = 1; s.loopA = s.loopB = null;
+
+  L('== ⑰ 段落标记 ==');
+  s.dancers = [w.makeDancer(0)]; s.selectedClip = null; s.markers = [];
+  A = putClip(w, '甲', 0, 5);
+  s.currentTime = 12; w.render();
+  w.addMarkerAtPlayhead();
+  ok('标记进 store（t=播放头）', s.markers.length === 1 && s.markers[0].t === 12);
+  ok('标尺上出现旗标', w.document.querySelectorAll('#ruler .mk-flag').length === 1);
+  ok('标记进项目 content（随项目保存）', (w.projectRecord().content.markers || []).length === 1);
+  var flags = w.document.querySelector('#ruler .mk-flag');
+  flags.dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
+  ok('点击旗标跳转播放头', s.currentTime === 12);
+  w.undo();
+  ok('加标记可撤销（undo 后空）', s.markers.length === 0);
+
+  L('== ⑱ 独奏 / 静音 ==');
+  s.dancers = [w.makeDancer(0), w.makeDancer(1)]; s.dancerCount = 2; s.selectedClip = null;
+  A = putClip(w, '甲', 0, 5);
+  var B2 = { id: s.nextClipId++, start: 2, duration: 3, data: { name: '乙', command: '/yi', category: 'usual' } };
+  s.dancers[1].actionClips.push(B2);
+  s.dancers[0].mute = true; w.render();
+  var lane0 = w.document.querySelector('#lanes .dancer-grp .lane');
+  ok('静音舞者的轨道有 muted-lane 类（调暗）', lane0 && lane0.classList.contains('muted-lane'));
+  var payload = w.ChoreoEdit.pure.buildGameClips(s.dancers, s.globalLyrics, function(ds, di){ return w.ChoreoEdit.pure.isMuted(ds, di); });
+  ok('静音舞者的条目不进游戏播放 payload', payload.length === 1 && payload[0].id === B2.id);
+  var smBtns = w.document.querySelectorAll('#lanes .dancer-grp .dh-sm'); // [S0,M0,S1,M1]
+  smBtns[2].dispatchEvent(new w.MouseEvent('click', {bubbles:true})); // 舞者2 点 S=独奏
+  ok('S 切换独奏', s.dancers[1].solo === true);
+  ok('独奏口径：未独奏的舞者1（虽未 mute）也判静音', w.ChoreoEdit.pure.isMuted(s.dancers, 0) === true && w.ChoreoEdit.pure.isMuted(s.dancers, 1) === false);
+  smBtns = w.document.querySelectorAll('#lanes .dancer-grp .dh-sm'); // render 重建后重取
+  smBtns[2].dispatchEvent(new w.MouseEvent('click', {bubbles:true}));
+  ok('再点 S 取消独奏', s.dancers[1].solo === false);
+  // S/M 互斥：同一舞者不能同时独奏和静音（2026-08-29 主人反馈）
+  s.dancers[0].mute = false; w.render(); // 先复位（前面验证调暗时开过 M）
+  var sm0 = w.document.querySelectorAll('#lanes .dancer-grp .dh-sm'); // [S0,M0,S1,M1]
+  sm0[1].dispatchEvent(new w.MouseEvent('click', {bubbles:true})); // 舞者1 开 M
+  ok('开 M：mute=true', s.dancers[0].mute === true);
+  sm0 = w.document.querySelectorAll('#lanes .dancer-grp .dh-sm'); // render 重建后重取
+  sm0[0].dispatchEvent(new w.MouseEvent('click', {bubbles:true})); // 舞者1 再开 S
+  ok('再开 S：solo=true 且 mute 被自动关掉（互斥）', s.dancers[0].solo === true && s.dancers[0].mute === false);
+  sm0 = w.document.querySelectorAll('#lanes .dancer-grp .dh-sm');
+  sm0[1].dispatchEvent(new w.MouseEvent('click', {bubbles:true})); // 再开 M
+  ok('再开 M：mute=true 且 solo 被自动关掉（互斥）', s.dancers[0].mute === true && s.dancers[0].solo === false);
+  s.dancers[0].mute = false; s.dancers[1].mute = false; s.dancers[1].solo = false; w.render();
+
+  L('== ⑲ 粘腾位/复制腾位（防重叠，2026-08-29 主人反馈） ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; s.globalLyrics = [];
+  A = putClip(w, '甲', 5, 5);   // 5..10
+  B = putClip(w, '乙', 12, 2);  // 12..14
+  s._clipboard = { minStart: 0, items: [{ di: 0, track: 'action', rel: 0, duration: 3, autoDur: false, data: { name: '丙', command: '/bing', category: 'usual' } }] };
+  s.currentTime = 6;
+  w.pasteSelection(); // 无选中条 → 退回"粘贴到播放头"语义
+  var cA = s.dancers[0].actionClips.find(function(c){ return c.data.name === '甲'; });
+  var cB2 = s.dancers[0].actionClips.find(function(c){ return c.data.name === '乙'; });
+  var cC = s.dancers[0].actionClips.find(function(c){ return c.data.name === '丙'; });
+  ok('粘贴腾位：横跨播放头的甲截断到播放头（5..6）', cA.start === 5 && cA.duration === 1, cA.start + '/' + cA.duration);
+  ok('粘贴腾位：播放头后的乙整体右移（12→15）', cB2.start === 15, '实际=' + cB2.start);
+  ok('粘贴的丙落在空位（6..9）', cC.start === 6 && cC.duration === 3);
+  ok('腾位后同轨零重叠', (function(){
+    var a = s.dancers[0].actionClips.slice().sort(function(x,y){ return x.start - y.start; });
+    for (var i = 1; i < a.length; i++) if (a[i-1].start + a[i-1].duration > a[i].start + 0.001) return false;
+    return true;
+  })());
+  w.duplicateClip(cC); // 复制丙：副本紧贴丙末端（9 起），乙再被推到 18
+  var cC2 = s.dancers[0].actionClips.filter(function(c){ return c.data.name === '丙'; })[1];
+  ok('右键复制紧贴原条且腾位：副本落 9、乙让到 18', !!cC2 && cC2.start === 9 && cB2.start === 18, cC2 ? ('副本=' + cC2.start + ' 乙=' + cB2.start) : '无副本');
+  // 新语义：有选中条时紧贴其末端粘贴（忽略播放头）
+  s.currentTime = 100; // 故意摆到远处：粘贴应跟选中条走而不是播放头
+  s.selectedClip = cA; cA.selected = true; // 甲 5..6
+  w.pasteSelection();
+  var cC3 = s.dancers[0].actionClips.filter(function(c){ return c.data.name === '丙'; }).pop();
+  ok('紧贴选中条粘贴：新丙落 6（=甲末端），忽略播放头 100', !!cC3 && cC3.start === 6 && s.currentTime === 100, cC3 ? ('实际=' + cC3.start) : '无新丙');
+  ok('腾位照旧：上一个丙 6→9、副本 9→12、乙 18→21', cC.start === 9 && cC2.start === 12 && cB2.start === 21, '丙=' + cC.start + ' 副本=' + cC2.start + ' 乙=' + cB2.start);
+  s._clipboard = null;
+
+  L('== ⑳ DOM 注入防护（AUD-002） ==');
+  // 注入串含 <img onerror>、<svg onload>、引号和 HTML 实体；哨兵变量若被执行说明脚本注入成立
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; s.globalLyrics = []; s.markers = [];
+  w.__injPwned = false;
+  var evil = '<img src=x onerror="window.__injPwned=true"><svg onload="window.__injPwned=true"></svg>&quot;&#x27;&';
+  var cEvil = putClip(w, evil, 0, 5);
+  s.globalLyrics.push({ id: s.nextClipId++, start: 20, duration: 3, data: { name: evil, command: '', category: 'lyric', isLyric: true } });
+  s.markers.push({ id: 'mk1', t: 30, name: evil });
+  s.dancers[0].name = '舞者' + evil;
+  s.dancers[0].currentJob = evil; // 职业名来自目录，也算半可信外部数据
+  w.render();
+  var injImgs = w.document.querySelectorAll('img, svg, iframe, object, embed');
+  ok('注入不生成 img/svg/iframe 等节点', injImgs.length === 0, '实际=' + injImgs.length + ' 个');
+  ok('注入哨兵未触发', w.__injPwned === false);
+  var nmEl = w.document.querySelector('#lanes .action-lane .lane-body .clip .c-nm');
+  ok('动作条按纯文本原样显示注入串', !!nmEl && nmEl.textContent === evil);
+  var flagEl = w.document.querySelector('.mk-flag');
+  ok('标记旗标按纯文本原样显示（含 ⚑ 前缀）', !!flagEl && flagEl.textContent === '⚑' + evil);
+  var nmDh = w.document.querySelector('.dh-nm');
+  ok('舞者名按纯文本原样显示', !!nmDh && nmDh.textContent === '舞者' + evil);
+  var resBefore = w.performance.getEntriesByType('resource').length;
+  ok('注入未产生任何额外网络请求', w.performance.getEntriesByType('resource').length === resBefore, '资源请求数=' + w.performance.getEntriesByType('resource').length);
+  // 导入层校验：结构/类型/长度不合格给中文错误、不进 store（内容合法性由渲染层兜底，上一组已验）
+  var threw = null;
+  try { w.importProject({ dancers: [{ actionClips: [{ start: 0, duration: 5, data: { name: new Array(122).join('长') } }] }] }); } catch (e) { threw = e; }
+  ok('导入动作名超长被拒（中文报错）', !!threw && /超长/.test(threw.message), threw ? threw.message : '未抛错');
+  threw = null;
+  try { w.importProject({ dancers: [] }); } catch (e) { threw = e; }
+  ok('导入空 dancers 被拒', !!threw && /舞者/.test(threw.message), threw ? threw.message : '未抛错');
+  threw = null;
+  try { w.importProject({ dancers: [{ name: '甲', actionClips: [{ start: 'x', duration: 5, data: { name: '正常', command: '/bow', category: 'usual' } }] }], globalLyrics: [], markers: [] }); } catch (e) { threw = e; }
+  ok('导入非数字开始时刻被拒', !!threw && /数字/.test(threw.message), threw ? threw.message : '未抛错');
+  threw = null;
+  try { w.importProject({ dancers: [{ name: '甲', actionClips: [{ start: 0, duration: 5, data: { name: '正常', command: '/bow', category: 'usual' } }] }], globalLyrics: [], markers: [] }); } catch (e) { threw = e; }
+  ok('正常工程照常导入', !threw && s.dancers.length === 1 && s.dancers[0].actionClips.length === 1, threw ? threw.message : '');
+  ok('导入层拦截后哨兵仍未触发', w.__injPwned === false);
+  w.render();
+  ok('导入后页面仍无注入节点', w.document.querySelectorAll('img, svg, iframe').length === 0);
+
+  L('== ㉑ 撤销落盘 + 删除项目防复活（AUD-005/006） ==');
+  // WP-5-WIRE：镜像 content 现在是规范文档（performers/tracks/view），旧 content（dancers）也兼容——
+  // 断言只关心“舞者0 的动作条数量与歌词宏开关”，这里做成与存储形状无关
+  function mirDancer0(mir) {
+    var c = mir && mir.content; if (!c) return null;
+    if (c.dancers) return { actionClips: c.dancers[0].actionClips, showLyricMacro: c.showLyricMacro };
+    var pid = ((c.performers || [])[0] || {}).id;
+    var evs = [];
+    (c.tracks || []).forEach(function (t) { if (t.type === 'motion' && t.performerId === pid) (t.events || []).forEach(function (e) { if (e.legacyLane === 'action') evs.push(e); }); });
+    return { actionClips: evs, showLyricMacro: !!(c.view && c.view.showLyricMacro) };
+  }
+  // —— AUD-005：undo/redo 恢复后立即写镜像/项目库，关页面重开也是撤销后的状态
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.globalLyrics = []; s.markers = []; s.selectedClip = null;
+  s.showLyricMacro = false;
+  s.history = []; s.historyIdx = -1; // 前面各组的编辑都进过历史，这里清栈重新计
+  w.saveHistory(); // 基线：空时间轴、宏关
+  putClip(w, '甲', 0, 5); w.saveHistory();      // 状态2：有甲、宏关
+  s.showLyricMacro = true; w.saveHistory();     // 状态3：有甲、宏开
+  s.dancers[0].actionClips = []; w.saveHistory(); // 状态4：删掉甲、宏开
+  ok('准备态：历史栈 4 条', s.history.length === 4, '实际=' + s.history.length);
+  w.undo(); // → 状态3
+  ok('undo 恢复 showLyricMacro=true', s.showLyricMacro === true);
+  w.undo(); // → 状态2
+  ok('undo 恢复被删的动作条', s.dancers[0].actionClips.length === 1 && s.dancers[0].actionClips[0].data.name === '甲');
+  var mir5 = JSON.parse(w.localStorage.getItem('choreo_autosave') || 'null');
+  ok('undo 已落盘：镜像=撤销后状态（有甲、宏关=状态2）', !!mir5 && mir5.projectId === s.projectId && mirDancer0(mir5).actionClips.length === 1 && mirDancer0(mir5).showLyricMacro === false);
+  w.redo(); // → 状态3
+  w.redo(); // → 状态4
+  ok('redo 回到删除后（0 条）', s.dancers[0].actionClips.length === 0 && s.showLyricMacro === true);
+  mir5 = JSON.parse(w.localStorage.getItem('choreo_autosave') || 'null');
+  ok('redo 已落盘：镜像=重做后状态', !!mir5 && mirDancer0(mir5).actionClips.length === 0);
+  w.undo(); w.undo(); // 回到状态2（有甲）继续后面的用例
+
+  // —— AUD-006：删当前项目先切走再删 + tombstone；全程用测试自建的项目，不碰原项目
+  var idA = s.projectId;
+  await w.__projTest.create('clip-check 删除用');
+  var idB = s.projectId;
+  ok('测试项目 B 已建立并成为当前项目', idB && idB !== idA);
+  await w.switchProject(idA); // 删除按钮对当前项目的序列：先切到别的项目
+  ok('已切回原项目', s.projectId === idA);
+  await w.__projTest.remove(idB);
+  var lstB = await w.__projTest.list();
+  ok('被删项目不在项目列表', !lstB.some(function (p) { return p.id === idB; }));
+  await w.__projTest.save(); // 模拟删除后的一次自动保存
+  var lstB2 = await w.__projTest.list();
+  ok('自动保存不会复活被删项目', !lstB2.some(function (p) { return p.id === idB; }), '列表=' + JSON.stringify(lstB2.map(function (p) { return p.id; })));
+  var mirB = JSON.parse(w.localStorage.getItem('choreo_autosave') || 'null');
+  ok('镜像指向现存项目', !!mirB && mirB.projectId === idA);
+
+  L('== ㉒ 显式套装边界（AUD-010 修订）：addClip 不自动生成切职业条，只避开手工切换轨 ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.globalLyrics = []; s.markers = []; s.selectedClip = null;
+  s.dancers[0].currentJob = '';
+  // ① 显式套装方向：带职业名的动作不自动生成切职业条（装备/职业不从目录推测），原点落地
+  w.addClip(0, 'action', { name: '挥剑', command: '/swordplay', category: 'usual', jobName: '骑士', jobId: 'T1', duration: 3 }, 10);
+  var ac1 = s.dancers[0].actionClips[0];
+  ok('带职业动作不自动生成切职业条（显式套装边界）', s.dancers[0].switchClips.length === 0, '实际=' + s.dancers[0].switchClips.length);
+  ok('动作按请求起点落地（无切职业窗口顺延）', !!ac1 && ac1.start === 10, ac1 ? 'ac=' + ac1.start : '无动作条');
+  ok('currentJob 不被自动改写', s.dancers[0].currentJob === '', '实际=' + s.dancers[0].currentJob);
+  // ② 同职业/不同职业连续动作：均不生成切职业条、不顺延
+  w.addClip(0, 'action', { name: '再挥', command: '/swordplay2', category: 'usual', jobName: '骑士', jobId: 'T1', duration: 3 }, 13);
+  w.addClip(0, 'action', { name: '拳击', command: '/box', category: 'usual', jobName: '武僧', jobId: 'T2', duration: 3 }, 16);
+  ok('换职业动作也不自动切换轨', s.dancers[0].switchClips.length === 0 && s.dancers[0].actionClips.length === 3, 'sw=' + s.dancers[0].switchClips.length + ' ac=' + s.dancers[0].actionClips.length);
+  ok('不同职业动作按原起点落地', s.dancers[0].actionClips[2].start === 16, '实际=' + s.dancers[0].actionClips[2].start);
+  // ③ 手工放置的切换轨仍受保护：动作与之重叠时按既有 +0.05 顺延
+  s.dancers[0].switchClips = [{ id: s.nextClipId++, start: 20, duration: 0.5, data: { name: '/gs change 1', command: '/gs change 1', category: 'switch' } }];
+  w.addClip(0, 'action', { name: '护手', command: '/guard', category: 'usual', duration: 2 }, 20.2);
+  ok('动作避开手工切换轨（+0.05 顺延到 20.55）', s.dancers[0].actionClips[3].start === 20.55, '实际=' + s.dancers[0].actionClips[3].start);
+  // ④ 0 秒起点：无切职业窗口时不推 0.5
+  s.dancers[0].switchClips = []; s.dancers[0].actionClips = [];
+  w.addClip(0, 'action', { name: '起手', command: '/swordplay', category: 'usual', jobName: '骑士', jobId: 'T1', duration: 3 }, 0);
+  ok('0 秒起点动作直接落 0（无自动切职业推位）', s.dancers[0].actionClips[0].start === 0 && s.dancers[0].switchClips.length === 0, 'ac=' + s.dancers[0].actionClips[0].start + ' sw=' + s.dancers[0].switchClips.length);
+  // 体检兜底：以上所有布局跑一遍真实体检，不得出现自造 overlap 红项。
+  // ctx.hasSkeleton=true：无头新 profile 资料库是空的，骨架红是环境噪音不是本次断言对象
+  var chk = w.ChoreoCheck.pure.check({ dancers: s.dancers, globalLyrics: s.globalLyrics, markers: s.markers }, { hasSkeleton: true });
+  var reds = chk.filter(function (it) { return it.level === 'red'; });
+  ok('真实体检零红项（无自造 switch×action 冲突）', reds.length === 0, reds.length ? JSON.stringify(reds.slice(0, 2)) : '');
+
+  L('== ㉓ 快速录制清单含草稿引用（AUD-014） ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.globalLyrics = []; s.markers = []; s.selectedClip = null;
+  var candQ = (w.recCatalogList() || []).find(function (c) { return w.REC_QUICK.indexOf(c.b) < 0; }); // 目录里有、不在快速名单的动作
+  ok('找到目录中不在 REC_QUICK 的候选动作', !!candQ, candQ ? candQ.b : '无候选（目录未加载）');
+  if (candQ) {
+    var cNew = { id: s.nextClipId++, start: 0, duration: 3, data: { name: candQ.cname, command: candQ.cmd, category: 'usual' } }; // 现行结构 data.command
+    var cOld = { id: s.nextClipId++, start: 5, duration: 3, command: candQ.cmd };                                              // 兼容旧结构 command
+    s.dancers[0].actionClips.push(cNew, cOld);
+    var quickNow = w.recQuickItems();
+    var hitsQ = quickNow.filter(function (c) { return c.b === candQ.b; });
+    ok('草稿引用的动作进快速清单（新+旧结构都识别）', hitsQ.length === 1, '命中=' + hitsQ.length);
+  }
+
+  L('== ㉔ 实时体检：红/黄描边高亮（issue-red / issue-yellow） ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.globalLyrics = []; s.markers = []; s.selectedClip = null;
+  // 两条互相压住的动作 → 红描边（冲突对方条也描，两条都看得见）
+  s.dancers[0].actionClips.push(
+    { id: s.nextClipId++, start: 0, duration: 5, data: { name: '长条', command: '/bow', category: 'usual' } },
+    { id: s.nextClipId++, start: 2, duration: 3, data: { name: '短条', command: '/wave', category: 'usual' } });
+  await w.__checkRun();
+  ok('重叠两条都带红描边', w.document.querySelectorAll('.clip.issue-red').length === 2,
+    '实际=' + w.document.querySelectorAll('.clip.issue-red').length);
+  // 没录过的动作 → 黄描边（无头 profile 资料库为空，所有动作都算缺录）。
+  // P5 渲染窗口化：可见窗约 0-11.3s，放进窗内；且避开后文"短条挪到 6s"（6-9s）不与之重叠
+  s.dancers[0].actionClips.push({ id: s.nextClipId++, start: 9, duration: 1.5, data: { name: '没录过', command: '/definitely_not_recorded_xyz', category: 'usual' } });
+  await w.__checkRun();
+  ok('缺录动作带黄描边', w.document.querySelectorAll('.clip.issue-yellow').length >= 1,
+    '实际=' + w.document.querySelectorAll('.clip.issue-yellow').length);
+  // 错开重叠后红描边清掉（签名变了才重绘——这也验证体检结果到描边的同步链路）
+  s.dancers[0].actionClips[1].start = 6;
+  await w.__checkRun();
+  ok('错开后红描边清掉', w.document.querySelectorAll('.clip.issue-red').length === 0,
+    '实际=' + w.document.querySelectorAll('.clip.issue-red').length);
+
+  L('== ㉕ 拖动局部刷新（OPT-2/AUD-019）：拖动中不整页重建 DOM ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null;
+  var P = putClip(w, '拖', 0, 5), Q = putClip(w, '伴', 10, 5);
+  s.pps = 60; w.render();
+  var dts0 = clipsDOM(w);
+  var pD = center(w, dts0[0]);
+  var rc0 = s._renderCount || 0;
+  mouse(w, dts0[0], 'mousedown', pD.x, pD.y);
+  await tick();
+  var dts = clipsDOM(w); // mousedown 处理器里会 render 一次，重建后要重新取节点
+  var left0 = dts[0].style.left;
+  // 多步拖动（rAF 节流，事件间留真实延时）；拖到中点看两件事：render 没涨、left 已实时变
+  for (var di5 = 1; di5 <= 6; di5++) {
+    mouse(w, w.document, 'mousemove', pD.x + di5 * 20, pD.y);
+    await tick();
+  }
+  var rcMid = s._renderCount || 0;
+  var leftMid = dts[0].style.left;
+  ok('拖动 6 步期间完整 render ≤ mousedown 一次', rcMid - rc0 <= 1, 'Δ=' + (rcMid - rc0));
+  ok('拖动中被拖条 left 实时更新（局部刷新生效）', leftMid !== left0, left0 + ' → ' + leftMid);
+  mouse(w, w.document, 'mouseup', pD.x + 120, pD.y);
+  await tick();
+  var rcUp = s._renderCount || 0;
+  ok('mouseup 收尾完整 render（描边/历史恢复）', rcUp - rcMid <= 2 && rcUp > rcMid, 'Δ=' + (rcUp - rcMid));
+  ok('拖动结果正确（起点 0→2）', P.start === 2, '实际=' + P.start);
+  ok('另一条未波及', Q.start === 10);
+
+  L('== ㉖ 窄屏侧栏：普通重绘后不丢 open、遮罩不卡（AUD3-W1） ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null;
+  s.compact = true; w.applyCompact(); w.render();
+  w.openSidebar();
+  ok('窄屏打开侧栏：open + 遮罩', w.document.querySelector('.sidebar').classList.contains('open') && w.document.getElementById('sbBackdrop').classList.contains('show'));
+  putClip(w, '侧', 0, 3); w.render(); // 普通编辑触发的整页重建（非宏编辑路径）
+  ok('普通重绘后侧栏仍展开（修复前会滑走）', w.document.querySelector('.sidebar').classList.contains('open'), 'open=' + w.document.querySelector('.sidebar').classList.contains('open'));
+  ok('普通重绘后遮罩仍跟随（不再卡死）', w.document.getElementById('sbBackdrop').classList.contains('show'));
+  w.toggleSidebar();
+  ok('重绘后 ☰ 一次就能关掉（状态同步）', !w.document.querySelector('.sidebar').classList.contains('open') && !w.document.getElementById('sbBackdrop').classList.contains('show'));
+  s.compact = false; w.applyCompact(); w.render();
+
+  L('== ㉗ 标签列宽一致：LABEL_W == .lane-label 实宽，点条左缘不偏 0.2s（AUD3-W2） ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; s.markers = [];
+  putClip(w, '宽', 1, 3);
+  s.pps = 60; w.render();
+  var lbW = w.document.querySelector('.lane-label').getBoundingClientRect().width;
+  ok('普通模式 LABEL_W=112 且 == 标签实宽', w.LABEL_W === 112 && lbW === w.LABEL_W, 'LABEL_W=' + w.LABEL_W + ' 实宽=' + lbW);
+  var wrapEl = w.document.getElementById('timelineWrap');
+  var wr = wrapEl.getBoundingClientRect();
+  var clipLeft = center(w, clipsDOM(w)[0]).r.left; // 条的视觉左缘 = 标签宽 + start*pps
+  s.currentTime = 99; // 故意放错值：验证点击真的把播放头带过去
+  mouse(w, w.document.getElementById('ruler'), 'click', clipLeft, wr.top + 5);
+  ok('点在条视觉左缘 → 播放头正落 1s（修复前偏到 1.2s）', Math.abs(s.currentTime - 1) < 0.005, '实际=' + s.currentTime);
+  s.compact = true; w.applyCompact(); w.render();
+  lbW = w.document.querySelector('.lane-label').getBoundingClientRect().width;
+  ok('窄屏模式 LABEL_W=64 且 == 标签实宽', w.LABEL_W === 64 && lbW === w.LABEL_W, 'LABEL_W=' + w.LABEL_W + ' 实宽=' + lbW);
+  s.compact = false; w.applyCompact(); w.render();
+
+  L('== ㉘ Delete 键：孤儿选中不再静默失效（AUD3-W3） ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; s.markers = [];
+  var W3a = putClip(w, '甲', 0, 5); putClip(w, '乙', 7, 5);
+  w.render(); cds = clipsDOM(w);
+  var p3a = center(w, cds[0]), p3b = center(w, cds[1]);
+  mouse(w, cds[0], 'mousedown', p3a.x, p3a.y, {ctrlKey:true});
+  await tick();
+  cds = clipsDOM(w); p3b = center(w, cds[1]);
+  mouse(w, cds[1], 'mousedown', p3b.x, p3b.y, {ctrlKey:true});
+  await tick();
+  cds = clipsDOM(w); p3b = center(w, cds[1]);
+  mouse(w, cds[1], 'mousedown', p3b.x, p3b.y, {ctrlKey:true}); // 再点 B：去选 B
+  await tick();
+  ok('构造孤儿选中：A.selected=true 且 selectedClip=null', W3a.selected === true && s.selectedClip === null);
+  w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+  await tick();
+  ok('Delete 删掉选集里剩的 A（修复前静默无效）', s.dancers[0].actionClips.filter(function(c){ return c.id === W3a.id; }).length === 0, '剩余条数=' + s.dancers[0].actionClips.length);
+  s.selectedClip = null; w.render();
+
+  L('== ㉙ 体检在线骨架比对走 48795（AUD3-W4） ==');
+  var libBak9 = w.ChoreoLibrary, fetchBak9 = w.fetch, gcBak9 = s.gameConnected, capsBak9 = s.capsOk;
+  var seenUrls = [];
+  s.gameConnected = true; s.capsOk = true;
+  // 桩须覆盖体检弹窗会用到的全部资料库入口（资源核对 projectResourceReport 也读 listProfiles/allClipIndex）
+  w.ChoreoLibrary = { available: function(){ return true; }, clipIndex: function(){ return Promise.resolve([]); }, getSkeletonInfo: function(){ return Promise.resolve({ hash: 'lib-hash' }); }, hashObject: function(){ return Promise.resolve('hash-x'); }, listProfiles: function(){ return Promise.resolve([]); }, allClipIndex: function(){ return Promise.resolve({}); } };
+  w.fetch = function(u, o){ // 只截骨架请求，其余放行（保持页面原有离线行为）
+    if (String(u).indexOf('/export/skeleton') >= 0) { seenUrls.push(String(u)); return Promise.resolve({ ok: true, status: 200, json: function(){ return Promise.resolve({ bones: [], count: 1 }); } }); }
+    return fetchBak9.apply(w, arguments);
+  };
+  w.showCheckModal();
+  await tick(500);
+  ok('体检在线骨架请求打到 48795', seenUrls.some(function(u){ return u.indexOf('localhost:48795/export/skeleton') >= 0; }), seenUrls.join(' | ') || '零请求');
+  ok('不再请求 48794 的 /export/skeleton', !seenUrls.some(function(u){ return u.indexOf('48794/export/skeleton') >= 0; }));
+  var bgX = w.document.querySelector('.modal-bg'); if (bgX && bgX.parentNode) bgX.parentNode.removeChild(bgX);
+  w.fetch = fetchBak9; w.ChoreoLibrary = libBak9; s.gameConnected = gcBak9; s.capsOk = capsBak9;
+
+  L('== ㉚ 宏草稿：输入只入草稿，显式应用才写回本舞者（不串人） ==');
+  // 宏面板现在默认折叠（属主简化方向：折叠条上「宏文本需要时展开」）——断言前先展开
+  s.dancers = [w.makeDancer(0), w.makeDancer(1)]; s.dancerCount = 2; s.selectedClip = null; s.activeMacroTab = 0; s.macroCollapsed = false;
+  w.render();
+  var mtas30 = w.document.querySelectorAll('.macro-tx');
+  ok('前置：宏面板渲染出当前 tab 输入框', mtas30.length >= 1, '实际=' + mtas30.length);
+  if (mtas30.length >= 1) {
+    var taA = mtas30[0];
+    taA.value = '/ac 打击 <wait.1>' + String.fromCharCode(10) + '/ac 魔法 <wait.1>';
+    taA.dispatchEvent(new w.Event('input', { bubbles: true })); // 只武装草稿；现行设计无自动写回定时器
+    await tick(750);
+    ok('输入只进草稿，不自动改写时间轴', s.dancers[0].actionClips.length === 0, '实际=' + s.dancers[0].actionClips.length);
+    var tabs30 = w.document.querySelectorAll('.macro-tab');
+    tabs30[1].dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    await tick(50);
+    ok('切 tab 后舞者2不受草稿影响', s.dancers[1].actionClips.length === 0 && s.dancers[1].switchClips.length === 0 && s.dancers[1].lyricClips.length === 0,
+      '实际=' + s.dancers[1].actionClips.length + '/' + s.dancers[1].switchClips.length + '/' + s.dancers[1].lyricClips.length);
+    tabs30[0].dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    await tick(50);
+    var applyBtn30 = w.document.querySelector('[data-action="apply-macro"]');
+    ok('应用按钮可用（草稿保留）', !!applyBtn30 && !applyBtn30.disabled);
+    if (applyBtn30) { applyBtn30.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await tick(50); }
+    ok('WEB-1 显式应用写回原舞者（2 条）', s.dancers[0].actionClips.length === 2, '实际=' + s.dancers[0].actionClips.length);
+    ok('WEB-1 舞者2保持为空', s.dancers[1].actionClips.length === 0 && s.dancers[1].switchClips.length === 0 && s.dancers[1].lyricClips.length === 0,
+      '实际=' + s.dancers[1].actionClips.length + '/' + s.dancers[1].switchClips.length + '/' + s.dancers[1].lyricClips.length);
+  }
+  s.activeMacroTab = 0; s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; w.render();
+
+  L('== ㉛ WEB-RACE：seek 409 重试只属于最新 seek ==');
+  var apiBak31 = w.apiFetch, ptBak31 = s.previewTarget, gcBak31 = s.gameConnected;
+  var seekCalls31 = [], tlPushes31 = [], seekHold31 = [];
+  w.apiFetch = function (url, opts) {
+    var u = String(url);
+    if (u.indexOf('/playback/seek') >= 0) {
+      seekCalls31.push(JSON.parse(opts.body).time);
+      var pr = {}; var p = new Promise(function (res, rej) { pr.res = res; pr.rej = rej; });
+      seekHold31.push(pr); return p;
+    }
+    if (u.indexOf('/playback/timeline') >= 0) { tlPushes31.push(JSON.parse(opts.body)); return Promise.resolve({ status: 'ok' }); }
+    return Promise.reject(new Error('stub-offline'));
+  };
+  s.previewTarget = 'game'; s.gameConnected = true;
+  w.sendSeek(1.0); await tick();
+  w.sendSeek(2.0); await tick(); // 第一条在途时排入更新的 seek
+  ok('前置：第一条 seek 在途、第二条排队', seekCalls31.length === 1 && seekCalls31[0] === 1, seekCalls31.join(','));
+  seekHold31[0].rej({ status: 409 }); // 插件持有旧时间轴 → 409
+  await tick(80);
+  ok('前置：409 触发快照重推', tlPushes31.length === 1, '推送=' + tlPushes31.length);
+  if (seekHold31[1]) seekHold31[1].res({});
+  await tick(80);
+  ok('WEB-2 旧时间不得借 409 重试压过新 seek', seekCalls31.length === 2 && seekCalls31[1] === 2, '实际=[' + seekCalls31.join(', ') + ']');
+  s.previewTarget = ptBak31; s.gameConnected = gcBak31; w.apiFetch = apiBak31;
+
+  L('== ㉜ WEB-RACE：拖动中实时体检让路，收尾保留一次最终检查 ==');
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; s.markers = []; s.globalLyrics = [];
+  s.dancers[0].actionClips.push(
+    { id: s.nextClipId++, start: 0, duration: 5, data: { name: '长条', command: '/bow', category: 'usual' } },
+    { id: s.nextClipId++, start: 2, duration: 3, data: { name: '短条', command: '/wave', category: 'usual' } });
+  w.render();
+  var n32 = clipsDOM(w), p32 = center(w, n32[1]);
+  mouse(w, n32[1], 'mousedown', p32.x, p32.y);
+  await tick();
+  n32 = clipsDOM(w); p32 = center(w, n32[1]); // mousedown 会 render 一次，重取节点
+  var rc32 = s._renderCount || 0;
+  var node32 = n32[1];
+  w.scheduleRealtimeCheck(); // 模拟编辑武装的 800ms 防抖检查（火灾点落在拖动中）
+  for (var i32 = 1; i32 <= 7; i32++) { // 拖动总时长 >1s，覆盖定时器火灾点
+    mouse(w, w.document, 'mousemove', p32.x + i32 * 40, p32.y);
+    await tick(160);
+  }
+  var rc32b = s._renderCount || 0;
+  ok('WEB-3 拖动中防抖检查触发也不整页重绘', rc32b - rc32 === 0, 'Δ=' + (rc32b - rc32));
+  ok('WEB-3 拖动中 DOM 未被重建（节点仍在文档）', node32.isConnected, '');
+  mouse(w, w.document, 'mouseup', p32.x + 280, p32.y);
+  await tick();
+  ok('WEB-3 拖动结果落位（短条离开重叠）', s.dancers[0].actionClips[1].start >= 5, '实际=' + s.dancers[0].actionClips[1].start);
+  await tick(1400); // mouseup render 武装的最终检查（800ms 防抖）真跑并应用
+  ok('WEB-3 收尾最终检查生效：错开后红描边清掉', w.document.querySelectorAll('.clip.issue-red').length === 0,
+    '实际=' + w.document.querySelectorAll('.clip.issue-red').length);
+  s.selectedClip = null;
+
+  L('== ㉝ WEB-RACE：实测时长校正=时间轴变更，刷新插件快照 ==');
+  var apiBak33 = w.apiFetch, ptBak33 = s.previewTarget, gcBak33 = s.gameConnected, ipBak33 = s.isPlaying;
+  var mdBak33 = JSON.stringify(s.measuredDur || {});
+  var tlPushes33 = [];
+  w.apiFetch = function (url, opts) {
+    var u = String(url);
+    if (u.indexOf('/playback/timeline') >= 0) { tlPushes33.push(JSON.parse(opts.body)); return Promise.resolve({ status: 'ok' }); }
+    if (u.indexOf('/actions/measured-durations') >= 0) return Promise.resolve({ durations: { '/ac_实测': 3.3 } });
+    return Promise.reject(new Error('stub-offline'));
+  };
+  s.previewTarget = 'game'; s.gameConnected = true; s.isPlaying = false;
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null;
+  var c33 = { id: s.nextClipId++, start: 0, duration: 2, autoDur: true, data: { name: '实测', command: '/ac_实测', category: 'skill' } };
+  s.dancers[0].actionClips.push(c33);
+  var rev33 = s._tlRevision;
+  w.refreshMeasured();
+  await tick(450); // 校正 + 300ms 防抖重推
+  ok('WEB-4 实测时长已回填 clip', c33.duration === 3.3, '实际=' + c33.duration);
+  ok('WEB-4 校正后 timelineRevision 递增', s._tlRevision === rev33 + 1, rev33 + '→' + s._tlRevision);
+  ok('WEB-4 新快照已推给插件且含修正时长', tlPushes33.length === 1 && JSON.stringify(tlPushes33[0]).indexOf('"duration":3.3') >= 0, '推送=' + tlPushes33.length);
+  s.previewTarget = ptBak33; s.gameConnected = gcBak33; s.isPlaying = ipBak33;
+  s.measuredDur = JSON.parse(mdBak33); w.apiFetch = apiBak33;
+
+  L('== ㉞ WEB-RACE：空区点击在游戏模式下同样下发 seek ==');
+  var apiBak34 = w.apiFetch, ptBak34 = s.previewTarget;
+  var seekCalls34 = [];
+  w.apiFetch = function (url, opts) {
+    if (String(url).indexOf('/playback/seek') >= 0) { seekCalls34.push(JSON.parse(opts.body).time); return Promise.resolve({}); }
+    return Promise.reject(new Error('stub-offline'));
+  };
+  s.previewTarget = 'game';
+  s.dancers = [w.makeDancer(0)]; s.dancerCount = 1; s.selectedClip = null; s.markers = [];
+  putClip(w, '占位', 0, 2); // 2s 之后是空区
+  s.pps = 60; s.currentTime = 0; w.render();
+  var lane34 = w.document.querySelector('.lane-body');
+  var wr34 = w.document.getElementById('timelineWrap').getBoundingClientRect();
+  mouse(w, lane34, 'click', wr34.left + w.LABEL_W + 4 * s.pps, wr34.top + 40); // 点 4s 空区
+  await tick();
+  ok('WEB-5 空区点击移动播放头到 4s', Math.abs(s.currentTime - 4) < 0.005, '实际=' + s.currentTime);
+  ok('WEB-5 游戏模式下空区点击同样 seek', seekCalls34.length === 1 && Math.abs(seekCalls34[0] - 4) < 0.005, '实际=[' + seekCalls34.join(', ') + ']');
+  s.previewTarget = ptBak34; w.apiFetch = apiBak34;
+
+  L('== ㉟ EXEC-CORE：演出执行面板 编译→装载→就绪→开始/紧急停止 的协议接线 ==');
+  {
+    var apiBak35 = w.apiFetch, gcBak35 = s.gameConnected, capsBak35 = s.capsOk, pcBak35 = s.pluginCaps, cfBak35 = w.confirm;
+    var calls35 = [];
+    s.gameConnected = true; s.capsOk = true;
+    // 能力握手：只有 /capabilities 带 shows 段的新插件才可用（老插件如实不可用）
+    var capsOld35 = s.pluginCaps; s.pluginCaps = null;
+    ok('EXEC 能力握手：老插件（无 shows 段）不支持', w.showExecSupported() === false);
+    s.pluginCaps = { app: 'ChoreoHelper', protocolVersion: 1, pairing: true, capabilities: ['shows'],
+      shows: { protocol: 1, executors: ['motion', 'cue', 'lyrics'], maxEvents: 5000 } };
+    ok('EXEC 能力握手：带 shows 段的新插件支持', w.showExecSupported() === true);
+    // /shows/* mock：记录请求体 + 按阶段推进状态机（apiFetch 层面截获，语义同真插件响应）
+    var state35 = 'idle';
+    w.apiFetch = function (url, opts) {
+      var u = String(url);
+      if (u.indexOf('/shows/') < 0) return Promise.reject(new Error('stub-offline'));
+      var body = opts && opts.body ? JSON.parse(opts.body) : {};
+      calls35.push({ url: u, body: body });
+      if (u.indexOf('/shows/status') >= 0) return Promise.resolve({ state: state35, total: 2,
+        dispatched: state35 === 'playing' ? 1 : 0, showTimeMs: state35 === 'playing' ? 500 : 0,
+        durationMs: 10000, stopReason: '', logText: '' });
+      if (u.indexOf('/shows/load') >= 0) { state35 = 'loaded'; return Promise.resolve({ status: 'loaded', state: 'loaded' }); }
+      if (u.indexOf('/shows/arm') >= 0) { state35 = 'armed'; return Promise.resolve({ status: 'armed', state: 'armed' }); }
+      if (u.indexOf('/shows/start') >= 0) { state35 = 'playing'; return Promise.resolve({ status: 'countdown', state: 'countdown', countdownMs: 3000 }); }
+      if (u.indexOf('/shows/stop') >= 0) { state35 = 'loaded'; return Promise.resolve({ status: 'ok', state: 'loaded' }); }
+      return Promise.reject(new Error('stub-offline'));
+    };
+    s.gameConnected = false; w.showExecPanel(); // 未连接：拒绝打开
+    ok('EXEC 游戏未连时面板拒绝打开', w.document.querySelector('.modal-bg') === null);
+    s.gameConnected = true;
+    w.showExecPanel();
+    await tick(120);
+    ok('EXEC 面板打开且状态行显示空闲', !!w.document.querySelector('.modal-bg') && w._showPanelUi &&
+      w._showPanelUi.line.textContent.indexOf('空闲') >= 0, '实际=' + (w._showPanelUi && w._showPanelUi.line.textContent));
+    ok('EXEC 初始开始按钮禁用（只接受 armed）', w._showPanelUi && w._showPanelUi.btns.start.disabled === true);
+    await w.showExecLoad(); await tick();
+    var loadCall35 = calls35.filter(function (c) { return c.url.indexOf('/shows/load') >= 0; })[0];
+    ok('EXEC 装载请求带协议 v1 演出包', !!loadCall35 && loadCall35.body.package && loadCall35.body.package.protocolVersion === 1);
+    ok('EXEC 包内容来自当前项目（事件≥1、整数毫秒、带演员归属）',
+      !!loadCall35 && loadCall35.body.package.events.length >= 1 &&
+      loadCall35.body.package.events.every(function (e) { return Number.isInteger(e.startMs) && typeof e.performerId === 'string'; }));
+    await w.showExecAction('/shows/arm', {}, ''); await tick();
+    ok('EXEC 就绪请求发出', calls35.some(function (c) { return c.url.indexOf('/shows/arm') >= 0; }));
+    await w.showExecRefresh(); await tick();
+    ok('EXEC 就绪后开始按钮解禁', w._showPanelUi && w._showPanelUi.btns.start.disabled === false);
+    w.confirm = function () { return true; };
+    await w.showExecAction('/shows/start', { countdownMs: 3000 }, ''); await tick();
+    var startCall35 = calls35.filter(function (c) { return c.url.indexOf('/shows/start') >= 0; })[0];
+    ok('EXEC 开始请求带 3 秒倒计时（玩家显式开始）', !!startCall35 && startCall35.body.countdownMs === 3000);
+    await w.showExecRefresh(); await tick();
+    ok('EXEC 状态行显示执行中+进度', w._showPanelUi &&
+      w._showPanelUi.line.textContent.indexOf('执行中') >= 0 &&
+      w._showPanelUi.line.textContent.indexOf('进度 1/2') >= 0, '实际=' + (w._showPanelUi && w._showPanelUi.line.textContent));
+    await w.showExecAction('/shows/stop', {}, ''); await tick();
+    ok('EXEC 紧急停止请求发出', calls35.some(function (c) { return c.url.indexOf('/shows/stop') >= 0; }));
+    await w.showExecRefresh(); await tick();
+    ok('EXEC 停止后回可就绪（arm 解禁/start 禁用）',
+      w._showPanelUi && w._showPanelUi.btns.arm.disabled === false && w._showPanelUi.btns.start.disabled === true);
+    var dbg35 = w.__showDebug();
+    ok('EXEC __showDebug 编译当前项目 ok 且 hash 8 位十六进制',
+      dbg35.compiled && dbg35.compiled.ok && /^[0-9a-f]{8}$/.test(dbg35.compiled.pkg.projectHash));
+    w.showExecClosePanel();
+    var bg35 = w.document.querySelector('.modal-bg'); if (bg35 && bg35.parentNode) bg35.parentNode.removeChild(bg35);
+    w.confirm = cfBak35; w.apiFetch = apiBak35; s.gameConnected = gcBak35; s.capsOk = capsBak35; s.pluginCaps = pcBak35;
+  }
+
+  if (draftBak !== null) w.localStorage.setItem('choreo_draft', draftBak); else w.localStorage.removeItem('choreo_draft');
+  if (targetBak !== null) w.localStorage.setItem('choreo_previewTarget', targetBak); else w.localStorage.removeItem('choreo_previewTarget');
+  try {
+    var d = JSON.parse(projBak || 'null');
+    if (d && d.dancers && d.dancers.length) {
+      s.dancers = d.dancers; s.globalLyrics = d.globalLyrics || [];
+      s.dancerCount = d.dancerCount || d.dancers.length; s.selectedClip = null;
+      s.markers = d.markers || []; // WP-3b：段落标记一并还原
+    } else {
+      s.dancers = [w.makeDancer(0)]; s.globalLyrics = []; s.dancerCount = 1; s.selectedClip = null; s.markers = [];
+    }
+  } catch (e) { s.dancers = [w.makeDancer(0)]; s.markers = []; }
+  if (w.persistProject) w.persistProject(); // WP-3：把还原后的内容写回项目库（镜像+IDB），测试写入不残留
+  s.pps = ppsBak;
+  s.loopA = loopBak.a; s.loopB = loopBak.b; // WP-3b：循环区间还原
+  w.render();
+  L('（草稿与界面已还原到测试前状态）');
+  finish();
+}
+</script>
+</body>
+</html>

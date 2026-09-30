@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>dump-action-refs</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Lumina"><HintPath>C:\Users\xhz\AppData\Roaming\XIVLauncherCN\addon\Hooks\dev\Lumina.dll</HintPath></Reference>
+    <Reference Include="Lumina.Excel"><HintPath>C:\Users\xhz\AppData\Roaming\XIVLauncherCN\addon\Hooks\dev\Lumina.Excel.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

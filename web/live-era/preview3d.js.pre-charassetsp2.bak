@@ -1,0 +1,1675 @@
+/**
+ * preview3d.js — 编舞主页的「3D 预览」悬浮面板（时间轴 ↔ 3D 联动）
+ *
+ * 干嘛的：打开面板后，全部舞者以真 3D 模型并排同屏；拖播放头 / 点标尺 / 播放时，
+ *        模型实时摆出对应时刻的姿势（scrubTo 精确对位，once 播完定格末帧）。
+ * 怎么开：主页工具栏「🧍 3D预览」按钮（调 window.__togglePreview3D，本文件挂上去的）。
+ *
+ * 数据流（与主页零耦合，主页现有播放/拖动代码一行不改）：
+ *   主页 store.currentTime（每帧只读）
+ *   → ChoreoEngine.scrubTo（choreo-engine.js，经典脚本全局）
+ *   → 每舞者 applyFn 写克隆模型的骨骼（复用 pose-viewer 实测管线：
+ *     FF14 骨名直配 + 单位比中位数 + 参考姿势归一化 1.7m）
+ *
+ * 动作数据：本地资料库（choreo-library.js，IndexedDB）优先，插件在线时从
+ *        48795 /export/getclip 补拉并顺手缓存回资料库（阶段 3）——游戏关了，
+ *        已导入的动作照样能拖动和播放。骨架/模型同样缓存优先+插件补拉。
+ * 注意：工具栏「⚡ 录制全部」走 48794 存 .bin，是另一套数据，不进本面板——
+ *       给本面板补动作要用姿势预览页的录制或 POST 48795 /export/clip。
+ *
+ * 关键数据转换：引擎（choreo-engine.js）对 clip 里缺位移通道的骨骼会取 0 导致骨架塌掉，
+ * 所以每个取回的 clip 都用参考骨架补齐——缺失骨骼/缺失 t 通道一律填参考姿势 q/t，
+ * 另用参考姿势合成一个「站立待机」clip（__idle__）兜底。
+ */
+
+(function () {
+  'use strict';
+
+  // ARCH-2：48795 基址归 choreo-api.js 统一管理，这里只取基址常量
+  // 页面不是从插件 http 服务打开时（浏览器内嵌视图基址非 http、file:// 直接双击打开），
+  // 相对路径的模块导入会报 Failed to resolve module specifier —— 这类场景改用绝对地址
+  // （静态服务走来源允许列表回显 ACAO；SEC-1 起私有读另要 X-Choreo-Token 配对头，见 secHeaders）
+  var BASE = (location.protocol === 'http:' || location.protocol === 'https:') ? './' : ChoreoAPI.export.base + '/';
+
+  // SEC-1：私有读（骨架/清单/单条动作/模型文件）要带配对码。主应用里用 choreo-app.js 的
+  // 全局 choreoTokenHeaders（带 capsOk 门槛，老插件兼容模式不带）；独立诊断页没有它，
+  // 直接读同一个 localStorage 键。匿名端点多带这个头无副作用
+  function secHeaders(extra){
+    if (typeof choreoTokenHeaders === 'function') return choreoTokenHeaders(extra);
+    var h = extra || {};
+    try {
+      var t = localStorage.getItem('choreo_pairToken');
+      if (t && /^[\x21-\x7E]+$/.test(t)) h['X-Choreo-Token'] = t;
+    } catch (e) { /* 个别环境禁 localStorage：匿名探测自然降级 */ }
+    return h;
+  }
+  var SPACING = 1.15;          // 舞者间距（米，归一化后的世界坐标）
+  var CHAR_H = 1.7;            // 归一化身高，与 pose-viewer 一致
+
+  // ---- 状态 ----
+  var inited = false, initing = false, visible = false, ready = false;
+  var THREE = null, GLTFLoader = null, cloneSkeleton = null;
+  var scene = null, camera = null, renderer = null;
+  var skeleton = null;         // {count, bones:[{i,n,p,t,q}]}
+  var modelRoot = null;        // 源模型（不进场景，只当克隆母版）
+  var modelRatio = 1;          // 模型单位 / 骨骼单位（局部偏移长度中位数）
+  var matchInfo = '';
+  var idleClip = null;
+  var rigs = [];               // [{group,model,skinned,boneNode,baseY,ring,dirty}]
+  var engine = null;
+  var panel = null, canvas = null, statusEl = null, missEl = null, infoEl = null;
+  var clipCache = {};          // cacheKey(name) → 已归一化 clip 或 'missing'（FIX-D：键含档案 id，切档案不复用）
+  var missing = [];            // 用了但没录制的动作名
+  var libSyncing = false, libDirty = false;
+  // 阶段2（离线启动）：降级标记——骨架用的是内置快照 / 模型用的是内置替身
+  // （真插件数据拿不到时先把面板立起来，48795 恢复后自动升级，见 hardReset）
+  var skelFromSnapshot = false, usedStandin = false;
+  // 角色档案（2026-08-30）：profile=当前活动档案；profMismatch=游戏角色与档案对不上
+  // （此时保持档案不乱套，面板明确提示 + 提供「采用游戏角色」建档按钮）
+  var profile = null, profMismatch = null, autoSwitched = null, modelNote = '';
+  var _lastOnlineSk = null;  // 最近一次在线拿到的游戏骨架原文（建档用）
+  var profSel = null, adoptBtn = null; // 面板底部的档案下拉 + 建档按钮
+  // FIX-I/PREVIEW-1：初始化代次。hardReset() 自增作废在途 init——init 里每个 await 之后都查
+  // 代次，过期分支静默退出、不再写任何模块状态（旧代码里过期 init 会在已清空的状态上崩溃，
+  // 还会把 inited/initing/状态栏写坏，让"切档案/重试"卡死在初始化失败上）
+  var _initGen = 0;
+
+  // ---- M1 视图状态：面板尺寸 / 相机 / 视角预设 ----
+  // INV-1：以下全部模块私有。不写 window.store、projectRecord()、工程库、撤销栈、
+  // localStorage 或 URL hash，只经 window.__p3dDebug().view 只读外露。
+  // M1 视图约定（M2~M4 必须沿用，见模块变更记录）：Y 轴向上，焦点 (0, 0.8, 0)，
+  // 半径 R(n) = 2.6 + (n - 1) * 1.035（= 现有 layoutDancers 的 2.6 + (n-1)*SPACING*0.9），
+  // 正视=+Z（与今天默认取景逐位一致）、侧视=+X、顶视=+Y 且 up=(0,0,-1)（正上方 up 退化）、
+  // 自由=+Z 标准透视（手动操作后即为所指示状态）。
+  var VIEW_CAM_Y = 1.05;        // 默认机位高度（与旧 layoutDancers 的 position.y 一致）
+  var VIEW_TARGET_Y = 0.8;      // 默认焦点高度（与旧 layoutDancers 的 lookAt 一致）
+  var VIEW_MIN_DIST = 0.6, VIEW_MAX_DIST = 60;           // INV-3：距离夹取
+  var VIEW_MIN_POLAR = 0.05, VIEW_MAX_POLAR = 3.091536;  // INV-3：极角夹取
+  var VIEW_MIN_W = 320, VIEW_MIN_H = 260, VIEW_MARGIN = 14; // viewContract.panelBounds
+  var VIEW_ORBIT_K = 0.0075;    // 每 CSS 像素的轨道弧度
+  var VIEW_ZOOM_K = 0.0012;     // 每 deltaY 的指数缩放系数
+  var VIEW_PAN_FIT = 0.9;       // 聚焦后包围盒占屏比（留 10% 边距）
+  var viewTarget = null, viewUp = null;                // THREE.Vector3，建场景后创建
+  var viewDist = 2.6, viewTheta = 0, viewPhi = 1.5;    // 以焦点为原点的球坐标
+  var viewPreset = 'free', viewMax = false, viewGesture = null;
+  var viewW = 340, viewH = 440;   // 面板内容框尺寸（CSS 像素），与旧 340x440 一致
+  var viewCamReady = false;       // 首次就绪后才允许落默认取景（INV-5）
+  var viewEls = { maxBtn: null, resizeEl: null, viewBtns: {} };
+  var viewWired = false;          // INV-4：监听器/观察者每面板实例只装一次
+  var viewRO = null;
+
+  // ============ 面板 UI ============
+  function buildPanel() {
+    panel = document.createElement('div');
+    panel.id = 'p3dPanel';
+
+    var head = document.createElement('div');
+    head.className = 'p3d-head';
+    var tt = document.createElement('span');
+    tt.className = 'p3d-title';
+    tt.textContent = '3D 预览';
+    statusEl = document.createElement('span');
+    statusEl.className = 'p3d-status';
+    var close = document.createElement('button');
+    close.className = 'p3d-close';
+    close.textContent = '✕';
+    close.title = '关闭 3D 预览';
+    close.onclick = function () { toggle(false); };
+    // M1：最大化/还原（Esc 也还原；最大化时不再可拖动缩放）
+    var maxBtn = document.createElement('button');
+    maxBtn.className = 'p3d-max';
+    maxBtn.type = 'button';
+    viewEls.maxBtn = maxBtn;
+    maxBtn.onclick = function () { setMaximized(!viewMax); };
+    head.appendChild(tt);
+    head.appendChild(statusEl);
+    head.appendChild(maxBtn);
+    head.appendChild(close);
+
+    // M1：视角工具条（正视/侧视/顶视/自由/复位/聚焦）
+    var views = document.createElement('div');
+    views.className = 'p3d-views';
+    [['front', '正视', '正视（正面取景，与今天的默认取景一致）'],
+     ['side', '侧视', '侧视（从右侧看，便于看队列纵深）'],
+     ['top', '顶视', '顶视（从上往下看，便于看队形）'],
+     ['free', '自由', '自由视角（标准透视，手动操作后自动切到这里）'],
+     ['reset', '复位', '复位视角（回到当前人数的默认取景）'],
+     ['focus', '聚焦', '聚焦全部可见舞者（只改距离，不改变选中）']].forEach(function (d) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'p3d-view';
+      b.setAttribute('data-view', d[0]);
+      b.textContent = d[1];
+      b.title = d[2];
+      b.setAttribute('aria-label', d[2]);   // AC-10：无歧义中文可访问名
+      b.onclick = function () { doViewAction(d[0]); };
+      views.appendChild(b);
+      viewEls.viewBtns[d[0]] = b;
+    });
+
+    canvas = document.createElement('canvas');
+    canvas.className = 'p3d-canvas';
+
+    var foot = document.createElement('div');
+    foot.className = 'p3d-foot';
+    var rb = document.createElement('button');
+    rb.textContent = '刷新动作库';
+    rb.title = '重新拉取 48795 已录制的动作（录制新动作后点这里）；初始化失败时点它重试';
+    rb.onclick = function () {
+      // 初始化失败（比如刚才游戏没开）或处于离线降级（快照骨架/替身模型）→ 点这里整体重来，
+      // 已就绪且在线时只重拉动作库
+      if ((!ready || degraded()) && inited && !initing) { hardReset(); setStatus('重新初始化…'); init(); return; }
+      libDirty = true; setStatus('同步动作库…');
+    };
+    // 角色档案选择（2026-08-30）：切档案=换整套模型+骨架（hardReset 重建）
+    profSel = document.createElement('select');
+    profSel.className = 'p3d-prof';
+    profSel.title = '选择用哪套角色档案（模型+骨架成套切换）；开着游戏时角色对得上会自动对号';
+    profSel.onchange = function () {
+      if (!profSel.value || !LIB()) return;
+      ChoreoLibrary.setActiveProfile(profSel.value).then(function () {
+        hardReset(); setStatus('切换档案，重新初始化…'); init();
+      }).catch(function (e) { setStatus('切换失败：' + ((e && e.message) || e)); });
+    };
+    adoptBtn = document.createElement('button');
+    adoptBtn.className = 'p3d-adopt';
+    adoptBtn.style.display = 'none';
+    adoptBtn.onclick = adoptGameProfile;
+    infoEl = document.createElement('span');
+    infoEl.className = 'p3d-info';
+    missEl = document.createElement('span');
+    missEl.className = 'p3d-miss';
+    foot.appendChild(rb);
+    foot.appendChild(profSel);
+    foot.appendChild(adoptBtn);
+    foot.appendChild(infoEl);
+    foot.appendChild(missEl);
+
+    // M1：缩放手柄。面板右下角锚定（右边和下边固定），可自由拖动的是左上角，
+    // 所以手柄放在左上角：往左拖变宽、往上拖变高。最大化时不可操作。
+    var grip = document.createElement('button');
+    grip.className = 'p3d-resize';
+    grip.type = 'button';
+    grip.textContent = '⇱';
+    grip.title = '拖动调整 3D 工作区大小';
+    grip.setAttribute('aria-label', '拖动调整 3D 工作区大小');
+    viewEls.resizeEl = grip;
+
+    panel.appendChild(head);
+    panel.appendChild(views);
+    panel.appendChild(canvas);
+    panel.appendChild(foot);
+    panel.appendChild(grip);
+    document.body.appendChild(panel);
+    wireViewEvents();     // INV-4：每面板实例只装一次
+    applyPanelBounds();
+    syncViewControls();
+  }
+
+  function setStatus(text) {
+    if (statusEl) statusEl.textContent = text;
+  }
+
+  function renderFoot() {
+    if (!missEl) return;
+    var parts = [], tips = [];
+    if (missing.length) {
+      parts.push('未录制：/' + missing.join(' /') + '（用姿势预览页录制）');
+      tips.push('这些动作还没有 48795 骨骼数据，3D 里暂不驱动');
+    }
+    if (profMismatch) {
+      parts.push('⚠ 游戏角色（' + profMismatch.boneCount + '骨）和档案「' + ((profile && profile.name) || '当前') + '」不是同一副身体，没有套用——点「采用游戏角色」可建新档案切换');
+      tips.push('为防模型/动作错位，面板保持当前档案。要用游戏里的新角色：点「采用游戏角色」建档（没有配套模型时先显示替身），或先用 Meddle 导出新模型部署后刷新本页自动对上');
+    } else if (modelNote) {
+      parts.push('⚠ ' + modelNote);
+      tips.push(modelNote);
+    }
+    missEl.textContent = parts.join('；');
+    missEl.title = tips.join('\n');
+  }
+
+  // ============ M1：3D 工作区视图层（面板尺寸 / 相机 / 预设） ============
+  // 全部状态模块私有（INV-1），只通过 window.__p3dDebug().view 只读外露（INV-7）。
+  function viewRadius(n) { return 2.6 + (n - 1) * SPACING * 0.9; }
+
+  function ensureViewVecs() {
+    if (!THREE) return false;
+    if (!viewTarget) viewTarget = new THREE.Vector3(0, VIEW_TARGET_Y, 0);
+    if (!viewUp) viewUp = new THREE.Vector3(0, 1, 0);
+    return true;
+  }
+
+  // 所有夹取集中在这里：距离、极角、焦点有限性（INV-3 / AC-2「所有数值有限」）
+  function clampView() {
+    if (!viewTarget || !isFinite(viewTarget.x) || !isFinite(viewTarget.y) || !isFinite(viewTarget.z)) {
+      if (!ensureViewVecs()) return;
+      viewTarget.set(0, VIEW_TARGET_Y, 0);
+    }
+    if (!isFinite(viewDist)) viewDist = VIEW_MIN_DIST;
+    viewDist = Math.min(VIEW_MAX_DIST, Math.max(VIEW_MIN_DIST, viewDist));
+    if (!isFinite(viewPhi)) viewPhi = Math.PI / 2;
+    viewPhi = Math.min(VIEW_MAX_POLAR, Math.max(VIEW_MIN_POLAR, viewPhi));
+    if (!isFinite(viewTheta)) viewTheta = 0;
+  }
+
+  function applyCameraRaw() {
+    if (!camera || !ensureViewVecs()) return;
+    var sp = Math.sin(viewPhi);
+    camera.position.set(
+      viewTarget.x + viewDist * sp * Math.sin(viewTheta),
+      viewTarget.y + viewDist * Math.cos(viewPhi),
+      viewTarget.z + viewDist * sp * Math.cos(viewTheta));
+    camera.up.copy(viewUp);
+    camera.lookAt(viewTarget);
+    camera.updateMatrixWorld(true);
+  }
+
+  function applyCamera() { clampView(); applyCameraRaw(); }
+
+  // 预设/复位：按 viewContract 精确落位（不走手势夹取，顶视的极角 0 是契约要求）
+  function setPreset(name) {
+    if (!camera || !ensureViewVecs()) return;   // 也供「首次就绪落默认取景」在 ready 前置调用
+    endGesture();
+    var r = viewRadius(rigs.length || dancerCount() || 1);
+    viewTarget.set(0, VIEW_TARGET_Y, 0);
+    if (name === 'top') viewUp.set(0, 0, -1); else viewUp.set(0, 1, 0);
+    var px = 0, py = VIEW_CAM_Y, pz = 0;
+    if (name === 'side') px = r;
+    else if (name === 'top') py = VIEW_CAM_Y + r;
+    else pz = r;                                   // front / free / reset
+    var ox = px - viewTarget.x, oy = py - viewTarget.y, oz = pz - viewTarget.z;
+    viewDist = Math.sqrt(ox * ox + oy * oy + oz * oz) || VIEW_MIN_DIST;
+    viewPhi = Math.acos(Math.min(1, Math.max(-1, oy / viewDist)));
+    viewTheta = Math.atan2(ox, oz);
+    viewPreset = (name === 'front' || name === 'side' || name === 'top') ? name : 'free';
+    applyCameraRaw();
+  }
+
+  function doViewAction(name) {
+    if (!ready) return;
+    if (name === 'focus') focusView(); else setPreset(name);
+  }
+
+  // 聚焦：把全部可见舞者的世界包围盒装进画面，只改距离和焦点，方向/up 不变（AC-6/AC-7）
+  function focusView() {
+    if (!camera || !ready || !ensureViewVecs()) return;
+    endGesture();
+    var box = null;
+    for (var i = 0; i < rigs.length; i++) {
+      var g = rigs[i].group;
+      if (!g || g.visible === false) continue;
+      var b = new THREE.Box3().setFromObject(g);
+      if (b.isEmpty()) continue;
+      if (![b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z].every(isFinite)) continue;
+      if (!box) box = b; else box.union(b);
+    }
+    if (!box) return;                    // 0 舞者：静默不动相机（AC-7）
+    var c = box.getCenter(new THREE.Vector3());
+    var dir = new THREE.Vector3().copy(camera.position).sub(viewTarget);
+    if (dir.lengthSq() < 1e-12) dir.set(0, 0.25, 1);
+    dir.normalize();
+    var d = fitDistance(box, c, dir);
+    viewTarget.copy(c);
+    viewDist = Math.min(VIEW_MAX_DIST, Math.max(VIEW_MIN_DIST, d));
+    viewPhi = Math.acos(Math.min(1, Math.max(-1, dir.y)));
+    viewTheta = Math.atan2(dir.x, dir.z);
+    viewPreset = 'free';
+    applyCameraRaw();
+  }
+
+  // 二分/比例迭代：找一个距离，让包围盒 8 个角的 NDC 最大值落在 VIEW_PAN_FIT 附近
+  function fitDistance(box, center, dir) {
+    var mn = box.min, mx = box.max, corners = [], i;
+    for (i = 0; i < 8; i++) {
+      corners.push(new THREE.Vector3((i & 1) ? mx.x : mn.x, (i & 2) ? mx.y : mn.y, (i & 4) ? mx.z : mn.z));
+    }
+    var savedPos = camera.position.clone(), savedUp = camera.up.clone();
+    var d = Math.min(VIEW_MAX_DIST, Math.max(VIEW_MIN_DIST, viewDist || 2.6));
+    var pt = new THREE.Vector3();
+    for (var it = 0; it < 40; it++) {
+      camera.position.set(center.x + dir.x * d, center.y + dir.y * d, center.z + dir.z * d);
+      camera.up.copy(viewUp);
+      camera.lookAt(center);
+      camera.updateMatrixWorld(true);
+      camera.updateProjectionMatrix();
+      var m = 0;
+      for (i = 0; i < 8; i++) {
+        pt.copy(corners[i]).project(camera);
+        if (!isFinite(pt.x) || !isFinite(pt.y)) continue;
+        m = Math.max(m, Math.abs(pt.x), Math.abs(pt.y));
+      }
+      if (!(m > 0)) break;
+      var want = m / VIEW_PAN_FIT;
+      if (Math.abs(want - 1) < 0.002) break;
+      var nd = Math.min(VIEW_MAX_DIST, Math.max(VIEW_MIN_DIST, d * want));
+      if (nd === d) break;
+      d = nd;
+    }
+    camera.position.copy(savedPos);
+    camera.up.copy(savedUp);
+    camera.updateMatrixWorld(true);
+    return d;
+  }
+
+  // 可见舞者世界包围盒 + 其 8 角在当前相机下的 NDC 极值（AC-7 验收口，纯读取）
+  function fitSnapshot() {
+    if (!camera || !THREE || !rigs.length) return { empty: true, maxAbs: 0 };
+    var box = null;
+    for (var i = 0; i < rigs.length; i++) {
+      var g = rigs[i].group;
+      if (!g || g.visible === false) continue;
+      var b = new THREE.Box3().setFromObject(g);
+      if (b.isEmpty() || ![b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z].every(isFinite)) continue;
+      if (!box) box = b; else box.union(b);
+    }
+    if (!box) return { empty: true, maxAbs: 0 };
+    camera.updateMatrixWorld(true);
+    camera.updateProjectionMatrix();
+    var m = 0, pt = new THREE.Vector3();
+    for (var k = 0; k < 8; k++) {
+      pt.set((k & 1) ? box.max.x : box.min.x, (k & 2) ? box.max.y : box.min.y, (k & 4) ? box.max.z : box.min.z);
+      pt.project(camera);
+      if (!isFinite(pt.x) || !isFinite(pt.y)) continue;
+      m = Math.max(m, Math.abs(pt.x), Math.abs(pt.y));
+    }
+    return {
+      empty: false, maxAbs: m,
+      min: { x: box.min.x, y: box.min.y, z: box.min.z },
+      max: { x: box.max.x, y: box.max.y, z: box.max.z }
+    };
+  }
+
+  // 平移：相机与焦点同向等距移动 → 距离不变、方向不变（AC-4）
+  function panBy(dx, dy) {
+    if (!camera) return;
+    var h = canvas ? (canvas.clientHeight || 1) : 1;
+    if (h < 1) h = 1;
+    var perPx = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * viewDist / h;
+    if (!isFinite(perPx)) return;
+    var right = new THREE.Vector3(), upv = new THREE.Vector3(), fwd = new THREE.Vector3();
+    camera.matrixWorld.extractBasis(right, upv, fwd);
+    viewTarget.addScaledVector(right, -dx * perPx).addScaledVector(upv, dy * perPx);
+    var lim = 1e4;
+    viewTarget.set(Math.max(-lim, Math.min(lim, viewTarget.x)),
+                   Math.max(-lim, Math.min(lim, viewTarget.y)),
+                   Math.max(-lim, Math.min(lim, viewTarget.z)));
+  }
+
+  // ---- 面板尺寸 ----
+  function clampSize(w, h) {
+    var maxW = window.innerWidth - (VIEW_MARGIN * 2 + 2);   // +2 = 左右 1px 边框
+    var maxH = window.innerHeight - (VIEW_MARGIN * 2 + 2);
+    if (!(maxW >= VIEW_MIN_W)) maxW = VIEW_MIN_W;
+    if (!(maxH >= VIEW_MIN_H)) maxH = VIEW_MIN_H;
+    var nw = Math.round(w), nh = Math.round(h);
+    if (!isFinite(nw)) nw = VIEW_MIN_W;
+    if (!isFinite(nh)) nh = VIEW_MIN_H;
+    return { w: Math.min(maxW, Math.max(VIEW_MIN_W, nw)), h: Math.min(maxH, Math.max(VIEW_MIN_H, nh)) };
+  }
+
+  function setPanelSize(w, h) {
+    if (viewMax) return;
+    var c = clampSize(w, h);
+    viewW = c.w; viewH = c.h;
+    applyPanelBounds();
+  }
+
+  function applyPanelBounds() {
+    if (!panel) return;
+    if (viewMax) {
+      panel.style.width = window.innerWidth + 'px';
+      panel.style.height = window.innerHeight + 'px';
+    } else {
+      panel.style.width = viewW + 'px';
+      panel.style.height = viewH + 'px';
+    }
+    resizeCanvas();
+  }
+
+  function setMaximized(on) {
+    if (!panel) return;
+    var want = !!on;
+    if (want !== viewMax) {
+      viewMax = want;
+      endGesture();
+      panel.classList.toggle('maximized', viewMax);
+    }
+    applyPanelBounds();
+    syncViewControls();
+  }
+
+  // ---- 控件可用性/文案（AC-10：中文 title + 可访问名；未就绪时禁用） ----
+  function syncViewControls() {
+    var dis = !ready;
+    var list = [viewEls.maxBtn, viewEls.resizeEl];
+    for (var k in viewEls.viewBtns) list.push(viewEls.viewBtns[k]);
+    list.forEach(function (el) { if (el) el.disabled = dis; });
+    if (viewEls.maxBtn) {
+      var t = viewMax ? '还原 3D 工作区（Esc 也可以还原）' : '最大化 3D 工作区（Esc 还原）';
+      viewEls.maxBtn.title = t;
+      viewEls.maxBtn.setAttribute('aria-label', t);
+      viewEls.maxBtn.textContent = viewMax ? '⤡' : '⛶';
+    }
+    if (viewEls.resizeEl) viewEls.resizeEl.style.display = viewMax ? 'none' : '';
+  }
+
+  // ---- 手势（INV-6：同一时刻最多一个手势；第二个指针忽略） ----
+  function endGesture() { viewGesture = null; }
+
+  function onCanvasPointerDown(e) {
+    if (!ready || !camera || viewGesture) return;
+    if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 2) return;
+    var mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
+    viewGesture = { mode: mode, pointerId: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
+    e.preventDefault();
+  }
+
+  function onResizePointerDown(e) {
+    if (!ready || viewMax || viewGesture) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    viewGesture = { mode: 'resize', pointerId: e.pointerId, x: e.clientX, y: e.clientY,
+                    x0: e.clientX, y0: e.clientY, w: viewW, h: viewH };
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    var g = viewGesture;
+    if (!g || e.pointerId !== g.pointerId) return;
+    var nx = isFinite(e.clientX) ? e.clientX : g.x;
+    var ny = isFinite(e.clientY) ? e.clientY : g.y;
+    var ddx = nx - g.x, ddy = ny - g.y;
+    g.x = nx; g.y = ny;
+    if (g.mode === 'resize') { setPanelSize(g.w - (nx - g.x0), g.h - (ny - g.y0)); return; }
+    viewPreset = 'free';
+    if (g.mode === 'orbit') { viewTheta += ddx * VIEW_ORBIT_K; viewPhi += ddy * VIEW_ORBIT_K; }
+    else panBy(ddx, ddy);
+    applyCamera();
+  }
+
+  function onPointerUp(e) {
+    if (!viewGesture || (e && e.pointerId !== viewGesture.pointerId)) return;
+    endGesture();
+  }
+
+  function onPointerCancel() { endGesture(); }
+
+  function onCanvasWheel(e) {
+    if (!ready || !camera) return;
+    e.preventDefault();
+    var dy = isFinite(e.deltaY) ? e.deltaY : 0;
+    viewDist = viewDist * Math.exp(dy * VIEW_ZOOM_K);
+    viewPreset = 'free';
+    applyCamera();
+  }
+
+  // 只在画布上按下的手势才吃掉右键菜单（AC-4）
+  function onCanvasContextMenu(e) { e.preventDefault(); }
+
+  function onWindowResize() {
+    if (viewMax) applyPanelBounds(); else setPanelSize(viewW, viewH);
+  }
+
+  function onKeyDown(e) {
+    if (e.key !== 'Escape') return;
+    if (viewGesture) { endGesture(); return; }          // AC-5
+    if (!viewMax) return;
+    var a = document.activeElement;
+    if (a === panel || (panel && a && panel.contains(a))) setMaximized(false);  // AC-3
+  }
+
+  // INV-4：这些监听器和观察者随面板实例只装一次，开关面板/改尺寸都不会重装
+  function wireViewEvents() {
+    if (viewWired || !panel || !canvas) return;
+    viewWired = true;
+    canvas.addEventListener('pointerdown', onCanvasPointerDown);
+    canvas.addEventListener('contextmenu', onCanvasContextMenu);
+    canvas.addEventListener('wheel', onCanvasWheel, { passive: false });
+    viewEls.resizeEl.addEventListener('pointerdown', onResizePointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    window.addEventListener('blur', endGesture);
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('keydown', onKeyDown);
+    if (typeof ResizeObserver === 'function') {
+      viewRO = new ResizeObserver(function () { resizeCanvas(); });
+      viewRO.observe(canvas);
+    }
+  }
+
+  function toggle(on) {
+    if (on === undefined) on = !visible;
+    if (on && !panel) buildPanel();
+    visible = on;
+    if (panel) {
+      panel.classList.toggle('open', visible);
+      if (visible) {
+        if (!inited && !initing) { setStatus('初始化中…'); init(); }
+        else { resizeCanvas(); startTick(); } // startTick 幂等；可见性断循环后重开面板要拉起来
+      } else {
+        // HYGIENE(AC-1)：面板关闭即断渲染循环——闭面板期间没有任何渲染内容，
+        // 空 rAF 循环纯属每帧白跑；重开走上面的 startTick（与可见性恢复同一条拉起路径）
+        _rafOn = false;
+      }
+    }
+  }
+  window.__togglePreview3D = function () { toggle(); };
+  // 调试口：window.__p3dSeek(5) 把主页播放头拨到 5 秒（面板会跟着摆姿势）
+  window.__p3dSeek = function (t) {
+    if (window.store) { window.store.currentTime = Number(t) || 0; }
+  };
+  // 调试/验收口：window.__p3dReset() 手动整体重置并重新初始化（AUD-020 GPU 生命周期验收用，
+  // 与 10s 自动升级探针同一条 hardReset→init 路径）
+  window.__p3dReset = function () {
+    if (inited && !initing) { hardReset(); setStatus('重新初始化…'); init(); }
+  };
+  // 阶段3：主页「资料库」窗口导入/导入备份完成后调这个——清掉内存缓存重新同步，
+  // 新进资料库的动作立刻可用（资料库优先取，不产生网络请求）
+  window.__p3dLibChanged = function () {
+    clipCache = {};
+    missing = [];
+    libDirty = true;
+  };
+  // 角色档案（2026-08-30）：资料库窗口增删/改名档案后调——刷新下拉；活动档案被删/换时整体重建
+  window.__p3dProfilesChanged = function () {
+    refreshProfileSelect();
+    if (!LIB() || !ready) return;
+    ChoreoLibrary.getActiveProfile().then(function (p) {
+      if ((p && p.id) !== (profile && profile.id)) { hardReset(); init(); }
+      else updateAdoptBtn();
+    }).catch(function () {});
+  };
+  // 控制台调试口：window.__p3dDebug()
+  window.__p3dDebug = function () {
+    return {
+      ready: ready, rigs: rigs.length, missing: missing.slice(),
+      ringOps: rigs.map(function (r) { return r.ring ? r.ring.material.opacity : null; }), // WP-3b：静音=0.22 光圈调暗诊断
+      clips: Object.keys(clipCache).map(function (k) { return k.split('\u0000')[1]; }), chars: engine ? engine.characters.length : 0,
+      timeline: engine && engine.timeline ? engine.timeline.length : 0,
+      engine: engine,   // v0.6.6：暴露引擎实例，供在真实页面上验证 scrubTo 混合状态
+      offline: degraded(),       // 阶段2：true = 骨架/模型用的是内置快照（替身状态）
+      library: LIB(),            // 阶段3：本地资料库可用性（供诊断）
+      profile: profile ? { id: profile.id, name: profile.name, boneCount: profile.boneCount } : null, // 角色档案（2026-08-30）
+      mismatch: profMismatch,    // 游戏骨架与档案不一致时非空 {boneCount,hash}
+      modelNote: modelNote,      // 模型缺失/不兼容提示（如部署位模型未采用的原因）
+      libStats: null,            // 占位：真正取 stats 是异步的，诊断时自己调 ChoreoLibrary.stats()
+      tlRebuilds: _tlRebuilds,   // OPT-2/AUD-018：时间轴重排次数（dirty 标记生效则静止时不再增长）
+      tickOn: _rafOn,            // AUD2-012：渲染循环是否在跑（可见性暂停验收用）
+      dpr: renderer ? renderer.getPixelRatio() : null, // AUD2-012：DPR 封顶验收用
+      gpu: renderer ? {          // OPT-2/AUD-020：GPU 资源计数（reset 验收看是否线性增长）
+        geometries: renderer.info.memory.geometries,
+        textures: renderer.info.memory.textures,
+        programs: renderer.info.programs.length
+      } : null,
+      // M1：只读视图口——INV-7 唯一允许的新增观察面，无 setter、不被读取时不影响行为
+      view: (function () {
+        var pr = panel ? panel.getBoundingClientRect() : null;
+        var cs = panel ? window.getComputedStyle(panel) : null;
+        var bw = cs ? (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0) : 0;
+        var bh = cs ? (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0) : 0;
+        var cam = (camera && viewTarget) ? camera : null;
+        var off = cam ? new THREE.Vector3().copy(cam.position).sub(viewTarget) : null;
+        var dl = off ? off.length() : 0;
+        return {
+          panel: {
+            left: pr ? pr.left : 0, top: pr ? pr.top : 0,
+            width: pr ? Math.max(0, pr.width - bw) : 0,
+            height: pr ? Math.max(0, pr.height - bh) : 0
+          },
+          canvas: {
+            cssWidth: canvas ? canvas.clientWidth : 0, cssHeight: canvas ? canvas.clientHeight : 0,
+            drawingBufferWidth: renderer ? renderer.domElement.width : 0,
+            drawingBufferHeight: renderer ? renderer.domElement.height : 0
+          },
+          camera: cam ? {
+            px: cam.position.x, py: cam.position.y, pz: cam.position.z,
+            qx: cam.quaternion.x, qy: cam.quaternion.y, qz: cam.quaternion.z, qw: cam.quaternion.w,
+            upX: cam.up.x, upY: cam.up.y, upZ: cam.up.z,
+            distance: dl,
+            polar: dl > 0 ? Math.acos(Math.min(1, Math.max(-1, off.y / dl))) : 0,
+            aspect: cam.aspect, fov: cam.fov
+          } : null,
+          // AC-7 的「包围盒投影落在画面内」必须是可观测的：这里只读外露可见舞者世界包围盒
+          // 与其 8 角在当前相机下的 NDC 极值。纯读取，不缓存、不改状态（仍是 __p3dDebug 这一条缝）。
+          fit: fitSnapshot(),
+          preset: viewPreset,
+          maximized: viewMax,
+          gesture: viewGesture ? { mode: viewGesture.mode, pointerId: viewGesture.pointerId } : null,
+          ready: ready
+        };
+      })()
+    };
+  };
+
+  // ============ 初始化（首次打开面板才跑；失败可重试，重试只补缺的部分） ============
+  function init() {
+    if (inited || initing) return;
+    initing = true;
+    var gen = _initGen; // PREVIEW-1：本代次令牌；hardReset 自增后，本分支在每个 await 后退出
+    (async function () {
+      try {
+        if (!THREE) {
+          setStatus('加载本地 Three.js 库…');
+          try {
+            THREE = await import(BASE + 'libs/three.module.js');
+            if (gen !== _initGen) return;
+            var gl = await import(BASE + 'libs/loaders/GLTFLoader.js');
+            if (gen !== _initGen) return;
+            GLTFLoader = gl.GLTFLoader;
+            var su = await import(BASE + 'libs/utils/SkeletonUtils.js');
+            if (gen !== _initGen) return;
+            cloneSkeleton = su.clone;
+          } catch (e) {
+            // 阶段2（离线启动）：file:// 双击打开且插件没开时模块导入两头断——浏览器禁 file://
+            // 模块、48795 也不在线。改加载同目录打包好的经典脚本版库（libs-classic，
+            // make-classic-libs.js 生成，加载顺序固定不能换）
+            setStatus('加载内置 Three.js 库（离线模式）…');
+            await loadScript('libs-classic/three.classic.js');
+            if (gen !== _initGen) return;
+            await loadScript('libs-classic/BufferGeometryUtils.classic.js');
+            if (gen !== _initGen) return;
+            await loadScript('libs-classic/SkeletonUtils.classic.js');
+            if (gen !== _initGen) return;
+            await loadScript('libs-classic/GLTFLoader.classic.js');
+            if (gen !== _initGen) return;
+            THREE = window.THREE;
+            GLTFLoader = THREE.GLTFLoader;
+            cloneSkeleton = THREE.clone;
+          }
+        }
+
+        if (!skeleton) {
+          setStatus('读取参考骨架…');
+          var sk = null;
+          // ARCH-2：配对码头/JSON/状态映射归 48795 高层 api——拉不到（离线/未配对/坏体）静默降级
+          try { sk = await ChoreoAPI.export.api('/export/skeleton'); } catch (e) { /* 网络不通：插件未连接（游戏没开） */ }
+          if (gen !== _initGen) return;
+          if (sk && sk.bones && sk.count) _lastOnlineSk = sk;
+          if (sk && sk.bones && sk.count && LIB()) {
+            // 角色档案对号（2026-08-30）：游戏骨架和某套档案一致 → 自动切到那套（换角色零点击）；
+            // 没有任何档案（全新安装）→ 用游戏骨架建第一套档案（保留旧版零点击体验）；
+            // 有档案但都对不上（如刚换种族还没导新模型）→ 保持当前档案不乱套，明确提示（不再静默错配）
+            var onlineHash = await ChoreoLibrary.hashObject(sk);
+            if (gen !== _initGen) return;
+            var lps = await ChoreoLibrary.listProfiles().catch(function () { return []; });
+            if (gen !== _initGen) return;
+            var matchP = null;
+            lps.forEach(function (p) { if (p.skeletonHash === onlineHash) matchP = p; });
+            if (matchP) {
+              profMismatch = null;
+              var curId = (await ChoreoLibrary.getActiveProfile() || {}).id || null;
+              if (gen !== _initGen) return;
+              if (curId !== matchP.id) {
+                await ChoreoLibrary.setActiveProfile(matchP.id).catch(function () {});
+                if (gen !== _initGen) return;
+                autoSwitched = matchP.name;
+              }
+              var act = await ChoreoLibrary.getActiveProfile();
+              if (gen !== _initGen) return;
+              if (act && act.skeleton) { profile = act; skeleton = act.skeleton; }
+            } else if (!lps.length || !lps.some(function (p) { return p.hasSkeleton; })) {
+              // 没有任何档案，或只有「空壳」档案（如离线升级期间旧 API 先落了动作、
+              // activePidOrNew 建的无骨架「默认角色」）：空壳不算"另一副身体"，不能把面板
+              // 钉死在替身——照旧用游戏骨架建真档案。空壳占着活动指针时切到新档案
+              profile = await ChoreoLibrary.createProfile({ name: '角色 ' + (lps.length + 1), skeleton: sk }).catch(function () { return null; });
+              if (gen !== _initGen) return;
+              var curShell = await ChoreoLibrary.getActiveProfile();
+              if (gen !== _initGen) return;
+              if (profile && (!curShell || !curShell.skeleton)) {
+                await ChoreoLibrary.setActiveProfile(profile.id).catch(function () {});
+                if (gen !== _initGen) return;
+              }
+              skeleton = sk;
+            } else {
+              var cur2 = await ChoreoLibrary.getActiveProfile();
+              if (gen !== _initGen) return;
+              if (cur2 && cur2.skeleton) { profile = cur2; skeleton = cur2.skeleton; }
+              profMismatch = { boneCount: sk.count, hash: onlineHash };
+            }
+          } else if (sk && sk.bones && sk.count) {
+            skeleton = sk; // 没有本地资料库（IndexedDB 不可用）：老路径直用在线骨架
+          } else if (LIB()) {
+            // 插件不给骨架（游戏没开/没登录）→ 用活动档案的骨架
+            var act2 = await ChoreoLibrary.getActiveProfile().catch(function () { return null; });
+            if (gen !== _initGen) return;
+            if (act2 && act2.skeleton) { profile = act2; skeleton = act2.skeleton; }
+            if (!skeleton) {
+              var libSk = await ChoreoLibrary.getSkeleton().catch(function () { return null; });
+              if (gen !== _initGen) return;
+              if (libSk && libSk.bones && libSk.count) skeleton = libSk;
+            }
+          }
+          if (!skeleton) {
+            // 阶段2（离线启动）：资料库也没有 → 用内置骨架快照（skeleton-snapshot.js）把面板立起来
+            var snap = window.__CHOREO_SKELETON_SNAPSHOT__;
+            if (snap && snap.bones && snap.count) {
+              skeleton = snap; skelFromSnapshot = true;
+            } else {
+              throw new Error(sk ? '网页资料缺失：骨架数据无效（要游戏开着才有参考骨架）'
+                                : '插件未连接（48795 无响应）且无骨架数据——连上后点「刷新动作库」重试');
+            }
+          }
+        }
+
+        if (!modelRoot) {
+          setStatus('加载 3D 模型…');
+          await loadModel(gen);
+          if (gen !== _initGen) return;
+        }
+
+        if (!scene) buildScene();
+        if (!idleClip) idleClip = buildIdleClip();
+        if (!engine) {
+          engine = new window.ChoreoEngine.PreviewEngine();
+          syncChars();          // 按主页当前舞者数建模型和引擎角色
+        }
+        ready = true;
+        resizeCanvas();
+        syncViewControls();      // M1：就绪后视角控件才可操作
+        setStatus(readyStatus(false));
+        refreshProfileSelect();
+        updateAdoptBtn();
+        renderFoot();
+        libDirty = true;
+        if (visible) startTick(); // HYGIENE(AC-1)：面板已关时不拉循环（重开时 toggle 里的 startTick 会拉起）
+      } catch (e) {
+        if (gen !== _initGen) return; // 过期代次的失败不覆盖状态栏（新代次可能已在跑/已就绪）
+        setStatus('初始化失败：' + ((e && (e.message || String(e))) || '未知'));
+      } finally {
+        // PREVIEW-1：只有当代分支能动生命周期——过期分支退出后 initing 留给新代次管理
+        if (gen === _initGen) { initing = false; inited = true; }
+      }
+    })();
+  }
+
+  // ============ 阶段2（离线启动）的兜底工具 ============
+  // 阶段3：本地资料库（choreo-library.js）在不在——不在就全自动跳过，不影响老路径
+  function LIB() { return !!(window.ChoreoLibrary && window.ChoreoLibrary.available()); }
+  // 经典脚本按序加载（file:// 离线场景：ES 模块被浏览器禁，只能走 <script> 标签；
+  // 加载完把标签摘掉，重试多次也不在 head 里攒节点）
+  function loadScript(src) {
+    return new Promise(function (ok, err) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = function () { ok(); if (s.parentNode) s.parentNode.removeChild(s); };
+      s.onerror = function () { err(new Error('脚本加载失败：' + src)); if (s.parentNode) s.parentNode.removeChild(s); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // 降级中 = 骨架或模型用的是内置快照（替身状态）
+  function degraded() { return skelFromSnapshot || usedStandin; }
+
+  // 就绪状态栏文案：离线降级、48795 未连接都要如实标注，不伪装在线
+  // （init 完成和动作库同步两处都会刷新状态，必须共用同一套话）
+  // 阶段3：48795 不通但本地资料库供上了动作时，说清楚"用的是本地动作"
+  function readyStatus(netFail, libServed) {
+    var s = '就绪' + (degraded() ? '（离线 · 替身模型）' : '') + ' · 骨骼匹配 ' + matchInfo;
+    if (!degraded()) s += ' · 单位比 1:' + modelRatio.toPrecision(3);
+    if (profile && profile.name) s += ' · 档案「' + profile.name + '」';
+    if (autoSwitched) s += '（已自动对号）';
+    if (netFail) s += libServed ? (' · 48795 未连接，本地资料库已供 ' + libServed + ' 个动作') : ' · 48795 未连接，动作库未同步';
+    return s;
+  }
+
+  // ============ 面板底部的档案选择器 / 不匹配提示 ============
+  // 刷新下拉清单（init 完成、档案增删、建档后都调一次）
+  function refreshProfileSelect() {
+    if (!profSel) return;
+    ChoreoLibrary.listProfiles().then(function (lps) {
+      var cur = profSel.value;
+      profSel.textContent = '';
+      if (!lps.length) { profSel.style.display = 'none'; return; }
+      profSel.style.display = '';
+      lps.forEach(function (p) {
+        var o = document.createElement('option');
+        o.value = p.id;
+        o.textContent = p.name + '（' + p.boneCount + '骨' + (p.modelNames.length ? '' : ' · 无模型') + '）';
+        if (p.isActive) o.selected = true;
+        profSel.appendChild(o);
+      });
+      if (cur && lps.some(function (p) { return p.id === cur; })) profSel.value = cur;
+      updateAdoptBtn();
+    }).catch(function () {});
+  }
+  function updateAdoptBtn() {
+    if (!adoptBtn) return;
+    adoptBtn.style.display = profMismatch ? '' : 'none';
+    if (profMismatch) {
+      adoptBtn.textContent = '采用游戏角色（' + profMismatch.boneCount + '骨）';
+      adoptBtn.title = '游戏里当前角色的骨架和本面板正在用的档案不一致。点它把游戏骨架建成新档案并切换过去；' +
+        '若部署位还没有对应模型，会先用替身显示，之后部署好模型再刷新本页就会自动配上';
+    }
+  }
+  // 「采用游戏角色」：把游戏当前骨架建成新档案并切换（模型随后由 init 的兼容性检查决定真模型或替身）
+  function adoptGameProfile() {
+    if (!_lastOnlineSk || !LIB()) return;
+    adoptBtn.disabled = true;
+    (async function () {
+      try {
+        var np = await ChoreoLibrary.createProfile({ name: '游戏角色 ' + _lastOnlineSk.count + '骨', skeleton: _lastOnlineSk });
+        await ChoreoLibrary.setActiveProfile(np.id);
+        profMismatch = null;
+        hardReset(); setStatus('已切到新档案，重新初始化…'); init();
+      } catch (e) {
+        setStatus('建档失败：' + ((e && e.message) || e));
+        adoptBtn.disabled = false;
+      }
+    })();
+  }
+
+  // 整体重来（scene/renderer 不重建，数据层全清）——离线打开的面板在插件上线后
+  // 自动/手动升级到真骨架+真模型用；连 clip 缓存一起清，升级后重拉
+  // AUD-020：reset 后不再用的几何体/材质/纹理去重 dispose（克隆体共享资源靠 Set 去重，
+  // 全部 rig 都已移除所以没有"还在用"的对象；three 会在下次使用时自动重新上传 GPU）
+  function disposeObject(root, seen) {
+    root.traverse(function (o) {
+      // r160 的 SkinnedMesh 没有 dispose()（那是更高版本加的），骨骼蒙皮纹理要经 Skeleton.dispose 释放
+      if (o.isSkinnedMesh && o.skeleton && o.skeleton.dispose && !seen.has(o.skeleton)) {
+        seen.add(o.skeleton); o.skeleton.dispose();
+      }
+      if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+      if (!o.material) return;
+      var mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(function (m) {
+        if (!m || seen.has(m)) return;
+        seen.add(m);
+        for (var k in m) {
+          var v = m[k];
+          if (v && v.isTexture && !seen.has(v)) { seen.add(v); v.dispose(); }
+        }
+        m.dispose();
+      });
+    });
+  }
+  function hardReset() {
+    var seen = new Set();
+    rigs.forEach(function (r) {
+      if (scene) {
+        scene.remove(r.group);
+        if (r.group) disposeObject(r.group, seen);
+        if (r.ring) { scene.remove(r.ring); disposeObject(r.ring, seen); }
+      }
+    });
+    if (renderer && renderer.renderLists) renderer.renderLists.dispose();
+    rigs = [];
+    engine = null; idleClip = null; modelRoot = null; skeleton = null;
+    skelFromSnapshot = false; usedStandin = false;
+    profile = null; profMismatch = null; autoSwitched = null; modelNote = '';
+    clipCache = {}; missing = []; _bonesReg = null; _sig = '\u0000';
+    _tlRevSeen = null; _sigRev = null;
+    _tlRebuilds = 0;
+    ready = false; inited = false;
+    syncViewControls();  // M1：重置期间视角控件禁用（面板尺寸/最大化状态不受影响，AC-8）
+    _initGen++;      // FIX-I/PREVIEW-1：作废在途 init（它在每个 await 后查代次并静默退出）
+    initing = false; // 释放初始化锁：紧接着的 init() 能以新代次立即接管（切档案/重试确定性）
+  }
+
+  // 面板初始化失败或离线降级时，每 10s 轻探一次 48795——游戏中途启动后面板自动升级，
+  // 不用手动刷新（探不通就静默等下一轮，不刷状态不报错）
+  setInterval(function () {
+    if (!inited || initing || (ready && !degraded())) return;
+    // ARCH-2：走 48795 高层 api——只有 2xx 才算连上，其余（含 403 未配对）静默等下一轮
+    ChoreoAPI.export.api('/export/list').then(function () {
+      if ((!ready || degraded()) && !initing) { hardReset(); init(); }
+    }).catch(function () {});
+  }, 10000);
+
+  // ============ 模型加载（照搬 pose-viewer 实测通过的管线） ============
+  // 角色档案口径（2026-08-30）：部署位模型（≠内置替身）先试，和当前档案骨架「全骨匹配 +
+  // 单位比接近 1」才算同一副身体——匹配就采用并回写档案（换装重导后开网页自动换新）；
+  // 不匹配（游戏换了角色、部署位还是旧模型）绝不套用，档案里有模型用档案的，都没有用替身。
+  // 旧版只看「部署位=替身就跳过」，挡不住"部署位真模型 ≠ 当前骨架"这种错配
+  function standinKey() {
+    var s = window.__CHOREO_STANDIN_MODEL__;
+    if (!s) return null;
+    try { return JSON.stringify(s); } catch (e) { return null; }
+  }
+
+  // AUD2-012（OPT-F）：会话级模型缓存——档案切换/整体重置不再重复 下载→parse→hash→写库。
+  // 身份口径：档案模型=档案id+内容hash（可信，库写入时盖的章）；部署位模型=文件名+字节数+
+  // 当前骨架签名（部署位文件被替换字节数几乎必变，同字节数+同骨架视作同一份）。
+  // 缓存的解析结果只被 SkeletonUtils.clone（克隆体共享的 geometry/材质在 reset 时 dispose，
+  // three 下次使用会自动重新上传 GPU——AUD-020 已验证这条路），缓存件本身从不入场景、不改骨骼
+  var _modelCache = {};
+  function skeletonSig() {
+    if (profile && profile.skeletonHash) return profile.skeletonHash;
+    var s = 0;
+    ((skeleton && skeleton.bones) || []).forEach(function (b) {
+      s = (s + Math.round(((b.t && b.t[0]) || 0) * 1000) + Math.round(((b.t && b.t[1]) || 0) * 1000) + String(b.n || '').length) | 0;
+    });
+    return ((skeleton && skeleton.count) || 0) + ':' + (s >>> 0).toString(36);
+  }
+  function cachePut(key, val) {
+    _modelCache[key] = val;
+    var ks = Object.keys(_modelCache);
+    if (ks.length > 8) delete _modelCache[ks[0]]; // FIFO 兜底，防多档案大模型吃内存
+  }
+  // 模型↔骨架兼容性：骨名全对上 + 局部偏移中位数单位比接近 1（同源导出应≈1:1）
+  function checkModelCompat(gltfScene, skel) {
+    var byName = {}, byLower = {};
+    gltfScene.traverse(function (o) {
+      if (o.name) {
+        byName[o.name] = o;
+        if (!byLower[o.name.toLowerCase()]) byLower[o.name.toLowerCase()] = o;
+      }
+    });
+    var matched = 0, rs = [];
+    skel.bones.forEach(function (b) {
+      var n = byName[b.n] || byLower[String(b.n).toLowerCase()] || null;
+      if (!n) return;
+      matched++;
+      var a = n.position.length(), c = Math.hypot(b.t[0], b.t[1], b.t[2]);
+      if (a > 1e-6 && c > 1e-6) rs.push(a / c);
+    });
+    rs.sort(function (x, y) { return x - y; });
+    var ratio = rs.length ? rs[rs.length >> 1] : 0;
+    return { matched: matched, ratio: ratio, ok: matched === skel.count && ratio >= 0.8 && ratio <= 1.25 };
+  }
+  // gen = PREVIEW-1 初始化代次：模型加载链路上每个 await 之后都查一次，过期立即退出，
+  // 不再写 modelRoot/modelNote/matchInfo 等模块状态（否则会把新代次刚建好的状态盖回旧档案的）
+  async function loadModel(gen) {
+    var gltf = null;
+    var files = ['model.glb', 'model.gltf'];
+    var loadedFile = null, loadedBuf = null, loadedHash = null;
+    var sk = standinKey();
+    modelNote = '';
+    // ① 部署位（主人手动部署的，最权威的"真模型"）
+    for (var fi = 0; fi < files.length && !gltf; fi++) {
+      try {
+        var res = await ChoreoAPI.export.rawUrl(BASE + files[fi], { headers: secHeaders() });
+        if (gen !== _initGen) return;
+        if (!res.ok) continue;
+        var ct = res.headers.get('content-type') || '';
+        if (ct.indexOf('application/json') >= 0) continue;  // 静态服务答的错误 JSON
+        var buf = await res.arrayBuffer();
+        if (gen !== _initGen) return;
+        // 部署位 gltf = 公共替身 → 跳过（档案/资料库优先），内嵌替身稍后兜底
+        if (files[fi] === 'model.gltf' && sk) {
+          try {
+            if (JSON.stringify(JSON.parse(new TextDecoder().decode(buf))) === sk) continue;
+          } catch (e) { /* 解不出 JSON 当个人模型用 */ }
+        }
+        loadedBuf = buf; // 缓存命中也要带上：回写资料库时若库里缺这份内容，得有 buf 可写
+        // AUD2-012：同一份部署位模型 × 同一副骨架的兼容结论/解析结果直接复用，不再重复 parse
+        var dkey = 'deploy:' + files[fi] + ':' + buf.byteLength + ':' + skeletonSig();
+        var dc = _modelCache[dkey];
+        if (dc && dc.compatOk) {
+          gltf = dc.gltf; loadedFile = files[fi]; loadedHash = dc.hash;
+        } else if (dc && !dc.compatOk) {
+          modelNote = dc.note; // 已明确不兼容：不再 parse 同一份模型
+        } else {
+          // SEC-1：.gltf 若引用外部 model.bin，由 GLTFLoader 自己发请求——setRequestHeader
+          // 让子资源也带上配对头（module/classic 两版 loader 都支持）
+          var cand = await new Promise(function (ok, err) {
+            var ld = new GLTFLoader(); ld.setRequestHeader(secHeaders());
+            ld.parse(buf, BASE, ok, err);
+          });
+          if (gen !== _initGen) return;
+          var compat = checkModelCompat(cand.scene, skeleton);
+          if (compat.ok) {
+            gltf = cand; loadedFile = files[fi];
+            loadedHash = await sha256HexBuf(buf); // 顺手算身份：写库去重、缓存键共用
+            if (gen !== _initGen) return;
+            cachePut(dkey, { compatOk: true, gltf: cand, hash: loadedHash });
+          } else {
+            // 部署位模型和当前档案不是一副身体：不套用（这正是"换角色后模型变样"的根因）
+            modelNote = '部署位模型与当前档案不符（骨骼 ' + compat.matched + '/' + skeleton.count +
+              ' · 单位比 1:' + compat.ratio.toFixed(2) + '），未采用';
+            cachePut(dkey, { compatOk: false, note: modelNote });
+          }
+        }
+      } catch (e) { /* 试下一个 */ }
+      if (gen !== _initGen) return;
+    }
+    // ② 当前档案自己的模型文件（多档案时切档案=切模型）；校验失败/不兼容时如实告知原因
+    if (!gltf && LIB() && profile && profile.id) {
+      try { gltf = await loadModelFromProfile(profile.id, gen); if (gen !== _initGen) return; } catch (e) { if (gen !== _initGen) return; modelNote = modelNote || ((e && e.message) || '档案模型加载失败'); }
+    } else if (!gltf && LIB() && !profile) {
+      // 无档案老路径：本地资料库缓存的真模型
+      try { gltf = await loadModelFromLib(); if (gen !== _initGen) return; } catch (e) { if (gen !== _initGen) return; /* 库里没有/坏了 */ }
+    }
+    if (loadedFile && LIB() && profile) cacheModelToProfile(profile.id, loadedFile, loadedBuf, loadedHash, gen); // 阶段3：在线加载成功顺手回写档案（内容没变不重写）
+    if (!gltf) {
+      // 阶段2（离线启动）：部署位、档案都没有 → 用内置替身模型（standin-model.js，
+      // 101 同名骨骼+腰部方块蒙皮，buffer 内嵌无外部文件）
+      var standin = window.__CHOREO_STANDIN_MODEL__;
+      if (standin) {
+        var skey = 'standin:' + (sk || '').length;
+        var sc = _modelCache[skey];
+        if (sc && sc.gltf) { gltf = sc.gltf; } // AUD2-012：替身解析结果也只 parse 一次
+        else {
+          gltf = await new Promise(function (ok, err) { new GLTFLoader().parse(standin, '', ok, err); });
+          if (gen !== _initGen) return;
+          cachePut(skey, { gltf: gltf });
+        }
+        usedStandin = true;
+        if (!modelNote) modelNote = '暂无与当前档案匹配的模型，显示内置替身';
+      }
+    }
+    if (!gltf) throw new Error('没找到模型文件 model.glb/gltf（部署位根目录），也没有内置替身模型');
+    if (gen !== _initGen) return;
+    modelRoot = gltf.scene;
+
+    var hasSkin = false;
+    modelRoot.traverse(function (o) { if (o.isSkinnedMesh) hasSkin = true; });
+    if (!hasSkin) throw new Error('模型里没有蒙皮网格');
+
+    // FF14 骨名直配（大小写兜底一次），对源模型做一遍即可，克隆体同名同构
+    var byName = {}, byLower = {};
+    modelRoot.traverse(function (o) {
+      if (o.name) {
+        byName[o.name] = o;
+        if (!byLower[o.name.toLowerCase()]) byLower[o.name.toLowerCase()] = o;
+      }
+    });
+    var srcNode = skeleton.bones.map(function (b) {
+      return byName[b.n] || byLower[b.n.toLowerCase()] || null;
+    });
+    var matched = srcNode.filter(Boolean).length;
+    if (matched < 10) throw new Error('模型骨骼名不匹配 ' + matched + '/' + skeleton.count);
+    matchInfo = matched + '/' + skeleton.count;
+
+    // 单位比：同名骨骼两侧局部偏移长度，取中位数
+    var rs = [];
+    skeleton.bones.forEach(function (b, i) {
+      var n = srcNode[i];
+      if (!n) return;
+      var a = n.position.length(), c = Math.hypot(b.t[0], b.t[1], b.t[2]);
+      if (a > 1e-6 && c > 1e-6) rs.push(a / c);
+    });
+    if (rs.length) { rs.sort(function (x, y) { return x - y; }); modelRatio = rs[rs.length >> 1]; }
+  }
+
+  // 阶段3：把在线加载成功的模型原文件存进档案（glb 一个文件；gltf 还要带 model.bin）。
+  // AUD2-012：内容没变不重复写库——以可信内容 hash 为身份（knownHash=部署位缓存里已算过的，
+  // 省一次 digest；老数据没有 hash 元数据时照旧写）。
+  // 注意 bin 的补写不能挂在「gltf 没变就 return」上：上次 gltf 写完、bin 写到一半被打断
+  // （如刷新页面）时，本轮必须把缺的 bin 补上，否则档案永远缺 bin
+  async function cacheModelToProfile(pid, fileName, buf, knownHash, gen) {
+    if (gen !== undefined && gen !== _initGen) return; // PREVIEW-1：过期代次不回写档案
+    var unchanged = false;
+    try {
+      var hex = knownHash || (buf ? await sha256HexBuf(buf) : '');
+      if (gen !== undefined && gen !== _initGen) return;
+      var info = await ChoreoLibrary.getProfileFileInfo(pid, fileName);
+      if (gen !== undefined && gen !== _initGen) return;
+      unchanged = !!(info && info.hash && hex && info.hash === hex); // 库里已是这份内容
+    } catch (e) { /* 查不了就照旧写 */ }
+    if (!unchanged) {
+      if (!buf) return;
+      ChoreoLibrary.putProfileFile(pid, fileName, new Blob([buf])).catch(function () {});
+    }
+    if (fileName === 'model.gltf') {
+      ChoreoLibrary.getProfileFileInfo(pid, 'model.bin').then(function (bi) {
+        var haveBin = !!(bi && bi.data);
+        if (unchanged && haveBin) return null; // gltf/bin 都没动，什么都不用写
+        return ChoreoAPI.export.rawUrl(BASE + 'model.bin', { headers: secHeaders() }).then(function (r) {
+          if (!r.ok) return null;
+          var ct = r.headers.get('content-type') || '';
+          if (ct.indexOf('application/json') >= 0) return null;  // 错误 JSON 不存
+          return r.blob();
+        }).then(function (b) {
+          if (!b) return null;
+          if (haveBin) { // bin 已在但 gltf 换新：hash 比对决定是否跟着重写
+            return b.arrayBuffer().then(function (bb) {
+              return sha256HexBuf(bb).then(function (bh) {
+                if (bi.hash && bh && bi.hash === bh) return null;
+                return ChoreoLibrary.putProfileFile(pid, 'model.bin', new Blob([bb])).catch(function () {});
+              });
+            });
+          }
+          return ChoreoLibrary.putProfileFile(pid, 'model.bin', b).catch(function () {}); // 缺 bin：直接补
+        });
+      }).catch(function () {});
+    }
+  }
+
+  // FIX-D/AUD2-009：档案模型加载的三道闸——①文件内容 hash 与库内元数据一致（文件没坏/没被换）
+  // ②解析成功 ③模型与该档案骨架「全骨匹配+单位比 0.8~1.25」兼容。任何一道不过都不挂载，
+  // 返回 null 让上层走替身兜底，绝不静默加载错配模型
+  async function sha256HexBuf(ab) {
+    if (!(typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest)) return '';
+    var d = await crypto.subtle.digest('SHA-256', ab);
+    var b = new Uint8Array(d), s = '';
+    for (var i = 0; i < b.length; i++) s += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+    return s;
+  }
+  // hash 元数据缺失（老数据）时跳过校验（无法确认不算失败）；有 hash 对不上=文件坏了
+  async function fileHashOk(ab, want) {
+    if (!want) return true;
+    var got = await sha256HexBuf(ab);
+    return !got || got === want;
+  }
+  function profileModelCompatOk(gltf) {
+    var compat = checkModelCompat(gltf.scene, skeleton);
+    if (compat.ok) return true;
+    modelNote = '档案自带模型与该档案骨架不符（骨骼 ' + compat.matched + '/' + skeleton.count +
+      ' · 单位比 1:' + compat.ratio.toFixed(2) + '），未采用，显示替身';
+    return false;
+  }
+
+  // 从指定档案回放模型。gltf 的外部 buffer（model.bin）用 blob URL +
+  // LoadingManager.setURLModifier 喂给 GLTFLoader（模型无贴图，不用管贴图路径）。
+  // AUD2-012：解析结果按（档案id+文件hash）缓存——切回看过的档案不再读文件/hash/parse；
+  // 已知不兼容的档案模型也记下结论不再重parse，modelNote 从缓存还原
+  function profileCacheGet(key) {
+    var c = _modelCache[key];
+    if (!c) return undefined;
+    if (c.incompat) { modelNote = c.note; return null; }
+    return c.gltf;
+  }
+  async function loadModelFromProfile(pid, gen) {
+    var glbInfo = await ChoreoLibrary.getProfileFileInfo(pid, 'model.glb');
+    if (gen !== undefined && gen !== _initGen) return null;
+    if (glbInfo && glbInfo.data) {
+      var glbKey = 'prof:' + pid + ':glb:' + (glbInfo.hash || '') + ':' + (glbInfo.size || 0);
+      var hitGlb = profileCacheGet(glbKey);
+      if (hitGlb !== undefined) return hitGlb;
+      var ab = await glbInfo.data.arrayBuffer();
+      if (gen !== undefined && gen !== _initGen) return null;
+      if (!(await fileHashOk(ab, glbInfo.hash))) throw new Error('档案模型文件（model.glb）校验不符');
+      if (gen !== undefined && gen !== _initGen) return null;
+      var g1 = await new Promise(function (ok, err) { new GLTFLoader().parse(ab, '', ok, err); });
+      if (gen !== undefined && gen !== _initGen) return null;
+      if (!profileModelCompatOk(g1)) { cachePut(glbKey, { incompat: true, note: modelNote }); return null; }
+      cachePut(glbKey, { gltf: g1 });
+      return g1;
+    }
+    var jsonInfo = await ChoreoLibrary.getProfileFileInfo(pid, 'model.gltf');
+    if (gen !== undefined && gen !== _initGen) return null;
+    var binInfo = await ChoreoLibrary.getProfileFileInfo(pid, 'model.bin');
+    if (gen !== undefined && gen !== _initGen) return null;
+    if (!jsonInfo || !jsonInfo.data || !binInfo || !binInfo.data) return null;
+    var gltfKey = 'prof:' + pid + ':gltf:' + (jsonInfo.hash || '') + ':' + (jsonInfo.size || 0);
+    var hitJson = profileCacheGet(gltfKey);
+    if (hitJson !== undefined) return hitJson;
+    var jbuf = await jsonInfo.data.arrayBuffer();
+    if (gen !== undefined && gen !== _initGen) return null;
+    if (!(await fileHashOk(jbuf, jsonInfo.hash))) throw new Error('档案模型文件（model.gltf）校验不符');
+    if (gen !== undefined && gen !== _initGen) return null;
+    var binUrl = URL.createObjectURL(binInfo.data);
+    try {
+      var mgr = new THREE.LoadingManager();
+      mgr.setURLModifier(function (url) {
+        var base = String(url).split('/').pop().split('?')[0];
+        return base === 'model.bin' ? binUrl : url;
+      });
+      var txt = new TextDecoder().decode(jbuf);
+      var g2 = await new Promise(function (ok, err) { new GLTFLoader(mgr).parse(txt, '', ok, err); });
+      if (gen !== undefined && gen !== _initGen) return null;
+      if (!profileModelCompatOk(g2)) { cachePut(gltfKey, { incompat: true, note: modelNote }); return null; }
+      cachePut(gltfKey, { gltf: g2 });
+      return g2;
+    } finally {
+      URL.revokeObjectURL(binUrl);
+    }
+  }
+
+  // 兼容包装：无档案老路径（存档时还没有档案概念）——资料库根上的旧文件
+  async function loadModelFromLib() {
+    var names = await ChoreoLibrary.getModelFiles();
+    var has = {};
+    names.forEach(function (f) { has[f.name] = true; });
+    if (has['model.glb']) {
+      var blob = await ChoreoLibrary.getModelFile('model.glb');
+      if (blob) {
+        var ab = await blob.arrayBuffer();
+        return await new Promise(function (ok, err) { new GLTFLoader().parse(ab, '', ok, err); });
+      }
+    }
+    if (has['model.gltf'] && has['model.bin']) {
+      var jsonBlob = await ChoreoLibrary.getModelFile('model.gltf');
+      var binBlob = await ChoreoLibrary.getModelFile('model.bin');
+      if (!jsonBlob || !binBlob) return null;
+      var binUrl = URL.createObjectURL(binBlob);
+      try {
+        var mgr = new THREE.LoadingManager();
+        mgr.setURLModifier(function (url) {
+          var base = String(url).split('/').pop().split('?')[0];
+          return base === 'model.bin' ? binUrl : url;
+        });
+        var txt = await jsonBlob.text();
+        return await new Promise(function (ok, err) { new GLTFLoader(mgr).parse(txt, '', ok, err); });
+      } finally {
+        URL.revokeObjectURL(binUrl);
+      }
+    }
+    return null;
+  }
+
+  // ============ 场景 ============
+  function buildScene() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f1319);
+    camera = new THREE.PerspectiveCamera(50, 340 / 340, 0.1, 100);
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    // AUD2-012：DPR 封顶 2——高 DPI 屏（150%/200%）原样跟会把 fill-rate 放大 4 倍以上，
+    // 面板是悬浮小窗，2x 的清晰度已经和周围文字一致
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    var dl = new THREE.DirectionalLight(0xffffff, 1.1);
+    dl.position.set(2, 3, 4);
+    scene.add(dl);
+    var grid = new THREE.GridHelper(12, 24, 0x323d4e, 0x1f2733);
+    scene.add(grid);
+  }
+
+  function resizeCanvas() {
+    if (!renderer || !canvas) return;
+    var w = canvas.clientWidth || 324, h = canvas.clientHeight || 340;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  // ============ 舞者模型（克隆体） ============
+  function makeRig(idx) {
+    var model = cloneSkeleton(modelRoot);
+    model.traverse(function (o) { if (o.isSkinnedMesh) o.frustumCulled = false; });
+    var group = new THREE.Group();
+    group.add(model);
+    scene.add(group);
+
+    // 本克隆体的骨名直配（克隆后的骨骼是独立对象，要重新找）
+    var byName = {}, byLower = {};
+    model.traverse(function (o) {
+      if (o.name) {
+        byName[o.name] = o;
+        if (!byLower[o.name.toLowerCase()]) byLower[o.name.toLowerCase()] = o;
+      }
+    });
+    var boneNode = skeleton.bones.map(function (b) {
+      return byName[b.n] || byLower[b.n.toLowerCase()] || null;
+    });
+    var skinned = null;
+    model.traverse(function (o) { if (!skinned && o.isSkinnedMesh) skinned = o; });
+
+    var rig = { group: group, model: model, skinned: skinned, boneNode: boneNode, baseY: 0, ring: null, dirty: false };
+
+    // 参考姿势归一化：写参考姿势 → 量骨世界包围盒 → 缩放到 1.7m、脚踩地
+    applyRef(rig);
+    model.updateMatrixWorld(true);
+    var box = new THREE.Box3(), v = new THREE.Vector3();
+    boneNode.forEach(function (n) { if (n) box.expandByPoint(n.getWorldPosition(v)); });
+    var h = Math.max(box.max.y - box.min.y, 1e-6);
+    var s = CHAR_H / h;
+    group.scale.setScalar(s);
+    rig.baseY = -box.min.y * s;
+
+    // 脚下彩色圈（主页舞者同色系，帮助分清谁是谁）
+    var colors = (typeof window.dancerColors !== 'undefined') ? window.dancerColors : ['#7eb3ff', '#e07bf5', '#5dde8e'];
+    var ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.3, 0.36, 32),
+      new THREE.MeshBasicMaterial({ color: colors[idx % colors.length], side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.003;
+    scene.add(ring);
+    rig.ring = ring;
+    return rig;
+  }
+
+  function applyRef(rig) {
+    skeleton.bones.forEach(function (b, i) {
+      var n = rig.boneNode[i];
+      if (!n) return;
+      n.quaternion.set(b.q[0], b.q[1], b.q[2], b.q[3]);
+      n.position.set(b.t[0] * modelRatio, b.t[1] * modelRatio, b.t[2] * modelRatio);
+    });
+  }
+
+  function layoutDancers() {
+    var n = rigs.length;
+    rigs.forEach(function (r, i) {
+      var x = (i - (n - 1) / 2) * SPACING;
+      r.group.position.set(x, r.baseY, 0);
+      if (r.ring) r.ring.position.set(x, 0.003, 0);
+    });
+    // M1（INV-5）：人数变化不再重置相机——只有「首次就绪」和显式预设/复位/聚焦能改几何，
+    // 否则主人数一变（syncChars → layoutDancers）主人手动调好的机位就被悄悄抹掉。
+    if (camera) ensureDefaultFraming();
+  }
+
+  // 首次就绪才落默认取景（正视/自由同一套几何，与旧行为逐位一致）
+  function ensureDefaultFraming() {
+    if (viewCamReady || !camera || !THREE) return;
+    viewCamReady = true;
+    setPreset('free');
+  }
+
+  // ============ 引擎角色同步 ============
+  var _bonesReg = null;
+  function bonesReg() {
+    if (_bonesReg) return _bonesReg;
+    _bonesReg = {};
+    skeleton.bones.forEach(function (b) { _bonesReg['bone_' + b.i] = {}; });
+    return _bonesReg;
+  }
+
+  function makeApplyFn(rig) {
+    return function (bn, pose) {
+      if (bn.indexOf('bone_') !== 0) return;
+      var i = parseInt(bn.slice(5), 10);
+      if (isNaN(i) || i < 0 || i >= skeleton.count) return;
+      var node = rig.boneNode[i];
+      if (!node) return;
+      node.quaternion.set(pose.qx, pose.qy, pose.qz, pose.qw);
+      node.position.set(pose.tx * modelRatio, pose.ty * modelRatio, pose.tz * modelRatio);
+      rig.dirty = true;
+    };
+  }
+
+  function syncChars() {
+    var n = dancerCount();
+    while (rigs.length < n) rigs.push(makeRig(rigs.length));
+    if (rigs.length > n) {
+      // AUD2-012：减人的局部删除路径也走和 hardReset 同款的去重 dispose——
+      // 12→1→12 反复增减不再积累 GPU 资源（克隆体共享 geometry/材质，dispose 后可重传）
+      var seen = new Set();
+      while (rigs.length > n) {
+        var r = rigs.pop();
+        if (scene) {
+          scene.remove(r.group);
+          if (r.group) disposeObject(r.group, seen);
+          if (r.ring) { scene.remove(r.ring); disposeObject(r.ring, seen); }
+        }
+      }
+    }
+    if (engine) {
+      while (engine.characters.length < rigs.length) {
+        var di = engine.characters.length;
+        engine.addCharacter({
+          name: 'dancer' + di,
+          bones: bonesReg(),
+          applyFn: makeApplyFn(rigs[di]),
+          idleClip: idleClip
+        });
+      }
+      while (engine.characters.length > rigs.length) engine.characters.pop();
+    }
+    layoutDancers();
+  }
+
+  function dancerCount() {
+    var st = window.store;
+    return (st && st.dancers) ? st.dancers.length : 0;
+  }
+
+  // ============ clip 数据转换 ============
+  // FIX-D/AUD2-008：缓存键带档案 id——就算某条路径忘了清缓存，切档案后也绝不会
+  // 复用上一套角色的同名动作（hardReset 本身会清缓存，这里是第二道保险）
+  function cacheKey(n) { return (profile && profile.id ? profile.id : '') + '\u0000' + n; }
+
+  // 用参考骨架补齐：缺失骨骼、缺失位移通道都填参考姿势，防止骨架塌掉
+  function normalizeClip(j, fallbackName) {
+    var bones = {};
+    skeleton.bones.forEach(function (b) {
+      var key = 'bone_' + b.i;
+      var ch = (j.bones && j.bones[key]) || null;
+      if (ch && ch.q && ch.q.length) {
+        bones[key] = {
+          q: ch.q,
+          t: (ch.t && ch.t.length) ? ch.t : [[0, b.t[0], b.t[1], b.t[2]]]
+        };
+      } else {
+        bones[key] = {
+          q: [[0, b.q[0], b.q[1], b.q[2], b.q[3]]],
+          t: [[0, b.t[0], b.t[1], b.t[2]]]
+        };
+      }
+    });
+    return {
+      name: fallbackName || j.name || 'clip',   // 引擎注册名以时间轴引用的文件名为准（录制内部名可能有空格等偏差）
+      duration: j.duration || 1,
+      type: j.type || 'once',
+      bones: bones
+    };
+  }
+
+  function buildIdleClip() {
+    return normalizeClip({ bones: null, duration: 2, type: 'loop' }, '__idle__');
+  }
+
+  // 与 ExportServer.cs 的保存命名规则一致：去头斜杠、斜杠换下划线
+  function cmdToName(cmd) {
+    var s = String(cmd || '').trim();
+    s = s.replace(/^\//, '').replace(/\//g, '_');
+    return s;
+  }
+
+  function syncLibrary(force) {
+    if (!ready || libSyncing) return;
+    libSyncing = true;
+    (async function () {
+      try {
+        if (force) {
+          clipCache = {};
+          missing = [];
+        }
+        var names = {};
+        var st = window.store;
+        if (st && st.dancers) {
+          st.dancers.forEach(function (d) {
+            (d.actionClips || []).forEach(function (c) {
+              var n = cmdToName(c.data && c.data.command);
+              if (n) names[n] = true;
+            });
+          });
+        }
+        var newMissing = [];
+        var netFail = false;   // 网络不通≠没录制：只标记待重试，不进"未录制"名单
+        var libHits = 0;       // 阶段3：这次从本地资料库供上的动作数（离线时状态栏如实说明）
+        for (var n in names) {
+          var ck = cacheKey(n);
+          if (clipCache[ck] === undefined) {
+            var got = null, fromLib = false;
+            // 阶段3：本地资料库优先（游戏关了也能放已导入的动作）；
+            // force（「刷新动作库」）时跳过缓存直接问插件，保证重新录过的动作能刷成新版
+            if (LIB() && !force) {
+              got = await ChoreoLibrary.getClip(n);
+              if (got && got.bones && !got.error) fromLib = true;
+              else got = null;
+            }
+            if (!got) {
+              try {
+                var j = await ChoreoAPI.export.api('/export/getclip?name=' + encodeURIComponent(n));
+                if (j && j.bones && !j.error) {
+                  got = j;
+                  // 阶段3：插件拿到的原始动作顺手缓存进资料库（FIX-D：写入当前活动档案），
+                  // 下次离线可用（存不进不影响本次）
+                  if (LIB()) ChoreoLibrary.putClip(n, j).catch(function () {});
+                } else {
+                  clipCache[ck] = 'missing';
+                }
+              } catch (e) {
+                // 非 2xx 但带 JSON 体（如 404 没录过）：与拆分前一样按「没录」算，不算断网
+                if (e && e.status && e.body) clipCache[ck] = 'missing';
+                else { netFail = true; clipCache[ck] = 'netfail'; }
+              }
+            }
+            if (got) {
+              var nc = normalizeClip(got, n);
+              clipCache[ck] = nc;
+              engine.registerClip(nc);
+              if (fromLib) libHits++;
+            }
+          }
+          if (clipCache[ck] === 'missing') newMissing.push(n);
+        }
+        missing = newMissing;
+        renderFoot();
+        if (netFail && missEl) {
+          missEl.textContent = '插件未连接（48795），动作状态未知，连上后自动同步' + (missEl.textContent ? '；' + missEl.textContent : '');
+          missEl.title = '游戏/插件没开时查不了动作库；面板里已加载的动作仍可正常拖动和播放';
+        }
+        if (ready) setStatus(readyStatus(netFail, libHits));
+      } finally {
+        libSyncing = false;
+        libDirty = false;
+      }
+    })();
+  }
+
+  // 每 ~10 秒：有缺动作时查一次录制库，新录好的自动补拉（录完不用手点「刷新动作库」）
+  function recheckMissing() {
+    if (!missing.length) return;
+    ChoreoAPI.export.api('/export/list').then(function (j) {
+      var changed = false;
+      (j.clips || []).forEach(function (n) {
+        var ck = cacheKey(n);
+        if (clipCache[ck] === 'missing' || clipCache[ck] === 'netfail') { delete clipCache[ck]; changed = true; }
+      });
+      if (changed) libDirty = true;
+    }).catch(function () {});
+  }
+
+  // 主页舞者动作条 → 引擎时间轴条目（char/clipName/start）
+  function rebuildTimeline() {
+    if (!engine) return;
+    var st = window.store;
+    var entries = [];
+    if (st && st.dancers) {
+      // WP-3b：独奏/静音的舞者整名不出动作（模型站桩可见）。口径与主页/游戏播放一致（isMuted）；
+      // ChoreoEdit 没加载（理论上不会）就不过滤，面板照常工作
+      var muted = null, CE = window.ChoreoEdit;
+      if (CE && CE.pure && st.dancers.some(function (d) { return d && (d.solo || d.mute); })) {
+        muted = {};
+        st.dancers.forEach(function (d, di) { if (CE.pure.isMuted(st.dancers, di)) muted[di] = true; });
+      }
+      st.dancers.forEach(function (d, di) {
+        if (muted && muted[di]) return;
+        (d.actionClips || []).forEach(function (c) {
+          var n = cmdToName(c.data && c.data.command);
+          // 未注册的动作也放进去：引擎 clipLibrary 查不到会自动跳过，录完刷新即可生效
+          if (n) entries.push({ char: 'dancer' + di, clipName: n, start: Number(c.start) || 0, opts: {} });
+        });
+      });
+    }
+    entries.sort(function (a, b) { return a.start - b.start; });
+    engine.timeline = entries;
+  }
+
+  // 时间轴用到的动作名集合签名（变了就补拉动作库，否则后加进时间轴的动作永远驱动不了）
+  function usedNamesSig() {
+    var st = window.store;
+    var names = [];
+    if (st && st.dancers) {
+      st.dancers.forEach(function (d) {
+        (d.actionClips || []).forEach(function (c) {
+          var n = cmdToName(c.data && c.data.command);
+          if (n) names.push(n);
+        });
+      });
+    }
+    names.sort();
+    return names.join('|');
+  }
+
+  // ============ 主循环 ============
+  var _headV = null, _frame = 0, _sig = '\u0000';
+  // OPT-2/AUD-018：主页内容版本号（主页 render/拖动改动时间轴内容时自增 store._tlRev），
+  // 只有变了才重建+排序引擎时间轴——静止时间轴每帧 0 次重排（旧实现每帧全量重建）
+  var _tlRevSeen = null, _sigRev = null, _tlRebuilds = 0;
+  // rAF 只挂一条循环（init 可重入后不能每次都 requestAnimationFrame，否则循环越积越多）
+  var _rafOn = false;
+  function startTick() { if (_rafOn) return; _rafOn = true; requestAnimationFrame(tick); }
+  // AUD2-012：标签页隐藏时显式停掉高频渲染循环（rAF 本就会被浏览器挂起，这里把循环断干净，
+  // 回前台立即补一帧再恢复——恢复瞬间不黑屏、时间轴和姿势直接跟上）
+  document.addEventListener('visibilitychange', function () {
+    // M1：隐藏时把手势一起清掉，回来不会带着"按住"的残状态（INV-6）
+    if (document.hidden) { _rafOn = false; endGesture(); }
+    else if (visible && ready && renderer) { renderer.render(scene, camera); startTick(); }
+  });
+  function updateInfo() {
+    if (!infoEl || !rigs.length) return;
+    // 头高遥测（和姿势预览页同款验证手段）：0 号舞者 j_kao 世界高度，拖动时数值变 = 管线通
+    var headNode = rigs[0].boneNode[46];
+    var y = null;
+    if (headNode) {
+      if (!_headV) _headV = new THREE.Vector3();
+      y = headNode.getWorldPosition(_headV).y;
+    }
+    var clipTxt = '';
+    var c = engine && engine.characters[0];
+    if (c && c.currentClip && c.currentClip.name !== '__idle__') {
+      clipTxt = c.currentClip.name + ' ' + c.clipTime.toFixed(1) + 's';
+    }
+    infoEl.textContent = 't=' + ((window.store && window.store.currentTime) || 0).toFixed(1) +
+      (y != null ? ' · 头高 ' + y.toFixed(2) + 'm' : '') + (clipTxt ? ' · ' + clipTxt : '');
+  }
+
+  function tick(now) {
+    if (!_rafOn) return; // visibilitychange 断循环后不再重挂（恢复时 startTick 重新拉起）
+    requestAnimationFrame(tick);
+    if (!visible || !ready) return;
+
+    _frame++;
+    var n = dancerCount();
+    if (n !== rigs.length) syncChars();
+    var st = window.store;
+    var tlRev = (st && st._tlRev) || 0;
+    if (_frame % 30 === 0 && (libDirty || tlRev !== _sigRev)) {
+      // 动作名集合只在时间轴内容变化后才可能变，不必每 30 帧都全表扫一遍
+      _sigRev = tlRev;
+      var sig = usedNamesSig();
+      if (libDirty || sig !== _sig) { _sig = sig; syncLibrary(false); }
+    }
+    if (_frame % 600 === 300) recheckMissing();
+    if (tlRev !== _tlRevSeen) { _tlRevSeen = tlRev; rebuildTimeline(); _tlRebuilds++; }
+
+    // v0.6.6：播放中开 loop 接缝混合；暂停/拖动保持精确对位（主页时间轴仍是唯一真相）
+    if (st) engine.scrubTo(Math.max(0, st.currentTime || 0), { blendLoopSeams: !!st.isPlaying });
+    engine.update(now);
+
+    for (var i = 0; i < rigs.length; i++) {
+      var r = rigs[i];
+      if (r.dirty) {
+        r.model.updateMatrixWorld(true);
+        if (r.skinned) r.skinned.skeleton.update();
+        r.dirty = false;
+      }
+      // WP-3b：静音舞者的脚下光圈调暗（和主页轨道调暗同语义；独奏口径也在 isMuted 里）
+      if (r.ring && r.ring.material) {
+        var CE2 = window.ChoreoEdit;
+        var muted = (CE2 && CE2.pure && st && st.dancers) ? CE2.pure.isMuted(st.dancers, i) : false;
+        var wantOp = muted ? 0.22 : 1;
+        if (r.ring.material.opacity !== wantOp) {
+          r.ring.material.transparent = muted;
+          r.ring.material.opacity = wantOp;
+          r.ring.material.needsUpdate = true;
+        }
+      }
+    }
+    updateInfo();
+    renderer.render(scene, camera);
+  }
+
+  // ============ 深链接：#3d 自动开面板，#3d&t=秒数 直接定位 ============
+  // （姿势预览页的「主页+3D预览」链接跳转用；平时打开主页不受影响）
+  // 阶段1（模式分流）：默认「网页 3D」模式下新开主页自动把面板立起来，不用再点按钮；
+  // 用户上次选了「游戏角色」则不抢屏（工具栏按钮仍可手动开）
+  (function () {
+    var m = location.hash.match(/^#3d(?:&t=([\d.]+))?/);
+    if (!m) {
+      var saved = 'web';
+      try { saved = localStorage.getItem('choreo_previewTarget') || 'web'; } catch (e) {}
+      if (saved === 'web') toggle(true);
+      return;
+    }
+    var seekT = m[1] ? parseFloat(m[1]) : null;
+    toggle(true);
+    if (seekT == null) return;
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      if (!ready || !window.store || !window.store.dancers || !window.store.dancers.length) {
+        if (tries > 100) clearInterval(timer);
+        return;
+      }
+      window.store.currentTime = seekT;
+      clearInterval(timer);
+    }, 200);
+  })();
+})();

@@ -1,0 +1,77 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\AbilityExecutionLifecycle.cs" Link="AbilityExecutionLifecycle.cs" />
+    <Compile Include="..\..\X1CameraFeedbackSession.cs" Link="X1CameraFeedbackSession.cs" />
+    <Compile Include="..\..\X1StageManual.cs" Link="X1StageManual.cs" />
+    <Compile Include="..\..\Exporter\AnimWriter.cs" Link="Exporter\AnimWriter.cs" />
+    <Compile Include="..\..\Exporter\PackWriter.cs" Link="Exporter\PackWriter.cs" />
+    <Compile Include="..\..\ChatCommandBuffer.cs" Link="ChatCommandBuffer.cs" />
+    <Compile Include="..\..\MotionDetect.cs" Link="MotionDetect.cs" />
+    <Compile Include="..\..\ClipPathPolicy.cs" Link="ClipPathPolicy.cs" />
+    <Compile Include="..\..\ReadAuthPolicy.cs" Link="ReadAuthPolicy.cs" />
+    <Compile Include="..\..\LocalApiSecurity.cs" Link="LocalApiSecurity.cs" />
+    <Compile Include="..\..\SessionTokenStore.cs" Link="SessionTokenStore.cs" />
+    <Compile Include="..\..\ChatCommandPolicy.cs" Link="ChatCommandPolicy.cs" />
+    <Compile Include="..\..\SeekPlan.cs" Link="SeekPlan.cs" />
+    <Compile Include="..\..\ClipCompare.cs" Link="ClipCompare.cs" />
+    <Compile Include="..\..\PreviewActorPolicy.cs" Link="PreviewActorPolicy.cs" />
+    <Compile Include="..\..\RecordTiming.cs" Link="RecordTiming.cs" />
+    <Compile Include="..\..\ClipQuality.cs" Link="ClipQuality.cs" />
+    <Compile Include="..\..\InFlightTracker.cs" Link="InFlightTracker.cs" />
+    <Compile Include="..\..\HttpDispatchPolicy.cs" Link="HttpDispatchPolicy.cs" />
+    <Compile Include="..\..\RequestDispatcher.cs" Link="RequestDispatcher.cs" />
+    <Compile Include="..\..\PlaybackApiPolicy.cs" Link="PlaybackApiPolicy.cs" />
+    <Compile Include="..\..\ShowApiPolicy.cs" Link="ShowApiPolicy.cs" />
+    <Compile Include="..\..\Exporter\ExportApiPolicy.cs" Link="Exporter\ExportApiPolicy.cs" />
+    <Compile Include="..\..\CommandThrottlePolicy.cs" Link="CommandThrottlePolicy.cs" />
+    <Compile Include="..\..\ShowProtocol.cs" Link="ShowProtocol.cs" />
+    <Compile Include="..\..\ShowValidator.cs" Link="ShowValidator.cs" />
+    <Compile Include="..\..\EventScheduler.cs" Link="EventScheduler.cs" />
+    <Compile Include="..\..\RuntimeGuard.cs" Link="RuntimeGuard.cs" />
+    <Compile Include="..\..\ExecutionLog.cs" Link="ExecutionLog.cs" />
+    <Compile Include="..\..\ShowRunner.cs" Link="ShowRunner.cs" />
+    <Compile Include="..\..\X1ExecutionInputs.cs" Link="X1ExecutionInputs.cs" />
+    <Compile Include="..\..\X1AbilityExecutor.cs" Link="X1AbilityExecutor.cs" />
+    <Compile Include="..\..\X1MovementExecutor.cs" Link="X1MovementExecutor.cs" />
+    <Compile Include="..\..\X1FacingExecutor.cs" Link="X1FacingExecutor.cs" />
+    <Compile Include="..\..\X1ShowDispatcher.cs" Link="X1ShowDispatcher.cs" />
+    <Compile Include="..\..\X1CompositeShowDispatcher.cs" Link="X1CompositeShowDispatcher.cs" />
+    <Compile Include="..\..\X1AdapterInputPolicy.cs" Link="X1AdapterInputPolicy.cs" />
+    <Compile Include="..\..\X1AbilityAdapterPolicy.cs" Link="X1AbilityAdapterPolicy.cs" />
+    <Compile Include="..\..\X1ForegroundPolicy.cs" Link="X1ForegroundPolicy.cs" />
+    <Compile Include="..\..\PoseSignatureAccess.cs" Link="PoseSignatureAccess.cs" />
+    <Compile Include="..\..\PreviewSessionLifecycle.cs" Link="PreviewSessionLifecycle.cs" />
+    <Compile Include="..\..\X1ShowProtocol.cs" Link="X1ShowProtocol.cs" />
+    <Compile Include="..\..\X1PreparedPackage.cs" Link="X1PreparedPackage.cs" />
+    <Compile Include="..\..\ScheduledShowStartPolicy.cs" Link="ScheduledShowStartPolicy.cs" />
+    <Compile Include="..\..\OwnedShowLoadPolicy.cs" Link="OwnedShowLoadPolicy.cs" />
+    <Compile Include="..\..\PreparedShowRegistration.cs" Link="PreparedShowRegistration.cs" />
+    <Compile Include="..\..\XatClipConverter.cs" Link="XatClipConverter.cs" />
+    <Compile Include="..\..\SkillResourceMap.cs" Link="SkillResourceMap.cs" />
+    <Compile Include="..\..\MotionEvidenceBoard.cs" Link="MotionEvidenceBoard.cs" />
+    <Compile Include="..\..\X1ReferenceDiagnosticSession.cs" Link="X1ReferenceDiagnosticSession.cs" />
+    <Compile Include="..\..\X1InputCalibration.cs" Link="X1InputCalibration.cs" />
+    <Compile Include="..\..\X1AbilityWriteBoundary.cs" Link="X1AbilityWriteBoundary.cs" />
+    <Compile Include="..\..\X1ManualTakeoverPolicy.cs" Link="X1ManualTakeoverPolicy.cs" />
+    <Compile Include="..\..\X1CameraRelativeProfile.cs" Link="X1CameraRelativeProfile.cs" />
+    <Compile Include="..\..\X1MovementReferenceSnapshot.cs" Link="X1MovementReferenceSnapshot.cs" />
+    <Compile Include="..\..\X1AbilityFailure.cs" Link="X1AbilityFailure.cs" />
+    <Compile Include="..\..\StagePathMappingReview.cs" Link="StagePathMappingReview.cs" />
+    <Compile Include="..\..\X1AutomaticResponse.cs" Link="X1AutomaticResponse.cs" />
+    <Compile Include="..\..\StageShowContract.cs" Link="StageShowContract.cs" />
+    <Compile Include="..\..\StageNativeFacingSink.cs" Link="StageNativeFacingSink.cs" />
+    <Compile Include="..\..\XatHavokUnwrap.cs" Link="XatHavokUnwrap.cs" />
+    <Compile Include="..\..\X1CameraPathPlan.cs" Link="X1CameraPathPlan.cs" />
+    <Compile Include="..\..\X1LocomotionSwitcher.cs" Link="X1LocomotionSwitcher.cs" />
+    <Compile Include="..\..\XatFbxClipReader.cs" Link="XatFbxClipReader.cs" />
+    <Compile Include="..\..\StagePathShowDispatcher.cs" Link="StagePathShowDispatcher.cs" />
+    <Compile Include="..\..\X1CameraFeedbackPolicy.cs" Link="X1CameraFeedbackPolicy.cs" />
+  </ItemGroup>
+</Project>

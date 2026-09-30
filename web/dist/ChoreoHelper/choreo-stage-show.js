@@ -1,0 +1,150 @@
+// 整场审阅：逐条列出生产序列化事件，只对显式范围生成有界执行包，绝不改写项目。
+// 长演出：原创路径按精确插值点无损切分为≤4秒/1.5米的链式段（原节点时刻/坐标/速度不变），整场上限5分钟/128事件。
+// TASK-20260919-PATH-LOCOMOTION：路径段步态逐段取自目标节点（走/跑，缺省走），不再整场统一申报；协议逐事件 locomotion 原生支持。
+// 独立朝向：插件宣告 stageFacingV1 时，原创朝向节点逐段映射为既有 transition 模式按原时刻编译；
+// 与路径段重叠的朝向段逐条排除（四键先转向再走），不能裁剪或重定时；未宣告能力保持整体排除文案。
+(function(root){
+  'use strict';
+  var MAX_SHOW_MS=300000,MAX_EVENTS=128,SEGMENT_MS=4000,SEGMENT_M=1.5;
+  function must(v,m){if(!v)throw Error(m)}
+  function copy(v){return JSON.parse(JSON.stringify(v))}
+  // 原创朝向节点 → 既有 X1 transition 输入：相邻节点(含起点朝向)成段，起止角与时刻原样，不发明新模式。
+  function facingPairs(e,baseYawDeg){
+    var p=e.data&&e.data.stageMotion;
+    if(!p||p.version!==1||p.fromStart!==true||!Array.isArray(p.points)||!p.points.length)return null;
+    var nodes=[[0,baseYawDeg]].concat(p.points.map(n=>[n.tMs,n.yawDeg])),out=[];
+    for(var i=1;i<nodes.length;i++){
+      if(!Number.isSafeInteger(nodes[i][0])||nodes[i][0]<=nodes[i-1][0]||!Number.isFinite(nodes[i][1])||!Number.isFinite(nodes[i-1][1]))return null;
+      out.push({startMs:nodes[i-1][0],durationMs:nodes[i][0]-nodes[i-1][0],fromDeg:nodes[i-1][1],toDeg:nodes[i][1]});
+    }
+    return out;
+  }
+  // 多舞者呈现：names 来自规范文档 performers；旧形状缺名时按表演者 ID 降级显示，不伪造。
+  function review(doc,path,context,caps){
+    var rows=[],errors=[],ids=new Set(),stageFacing=!!(caps&&caps.stageFacingV1);
+    var names=new Map();(Array.isArray(doc.performers)?doc.performers:[]).forEach(p=>{if(p&&p.id)names.set(String(p.id),p.name||'')});
+    function nameOf(id){return names.get(String(id))||String(id)}
+    // 逐舞者汇总：所选舞者绑定本地角色可执行；其余仅网页排练并逐条排除（一个客户端只执行一位本地角色）。
+    var order=[],per=new Map();
+    function tally(id,bound){if(!per.has(id)){per.set(id,{performerId:id,name:id===path.performerId?(path.dancerName||nameOf(id)):nameOf(id),executable:bound,enabledCount:0,excludedCount:0});order.push(id)}return per.get(id)}
+    var segments=null,segmentCount=0;
+    try{segments=segmentPath(path);segmentCount=segments.length}catch(e){errors.push(e.message)}
+    var showMs=path.durationMs,facingIncluded=0;
+    // 第一遍：编译所选舞者的原创朝向轨（能力已宣告时），先定整场时长。
+    var compiled=new Map();
+    if(stageFacing)(doc.tracks||[]).forEach(t=>{
+      if(t.enabled===false||t.performerId!==path.performerId)return;
+      (t.events||[]).forEach(e=>{
+        if(e.enabled===false||e.kind!=='facing')return;
+        var pairs=facingPairs(e,path.points[0].yawDeg);
+        compiled.set(e,pairs);
+        if(!pairs)return;
+        pairs.forEach(pr=>{if(!segments||!segments.some(seg=>pr.startMs<seg.startMs+seg.durationMs&&seg.startMs<pr.startMs+pr.durationMs)){
+          showMs=Math.max(showMs,pr.startMs+pr.durationMs);facingIncluded++}});
+      });
+    });
+    (doc.tracks||[]).forEach(t=>(t.events||[]).forEach(e=>{
+      var reason='',supported=false,enabled=t.enabled!==false&&e.enabled!==false;
+      var dancerName=nameOf(t.performerId);
+      if(!enabled)reason='原项目已停用';
+      else if(t.performerId!==path.performerId)reason='舞者「'+dancerName+'」未绑定本地角色，仅网页排练预览；本场逐条排除，不在游戏执行（一个客户端一次只执行所选舞者）';
+      else if(e.kind==='facing'){
+        if(!stageFacing)reason='独立朝向仅网页排练预览；须插件宣告 stageFacingV1 并逐条验收后才可执行，本场明确排除，不能称完整轨道执行';
+        else if(!compiled.has(e)||!compiled.get(e))reason='仅支持舞台朝向轨的原时刻过渡；其他朝向数据本场排除，不能改写';
+      }
+      else if(e.kind==='movement')supported=e.id===path.eventId;
+      else if(e.kind==='motion')supported=/^\/[^\s;<>]+(?: motion)?$/.test(e.command||e.data?.command||'')&&!/^\/(?:gs|gearset|job)(?:\s|$)/i.test(e.command||'');
+      else if(e.kind==='ability'){
+        var p=e.data?.rehearsalAbility;
+        supported=p?.version===1&&/^[1-9][0-9]*$/.test(p.actionId)&&Number(p.actionId)<=2147483647&&e.sourceRef?.kind==='action'&&String(e.sourceRef.id)===p.actionId&&p.target?.kind==='self';
+        if(!supported)reason='仅支持真实 Action 身份且明确自身目标；其他目标尚未接入本场';
+      }
+      if(e.kind==='motion'&&((e.playMode&&e.playMode!=='once')||(e.rootMotionMode&&e.rootMotionMode!=='inPlace'))){supported=false;reason='仅支持原地单次动作；循环或根位移不能改写为单次执行'}
+      if(enabled&&t.performerId===path.performerId&&e.kind!=='facing'){
+        if(!supported){reason=reason||'此事件尚未接入有界整场';errors.push(e.id+'：'+reason)}
+        if(!Number.isSafeInteger(e.startMs)||!Number.isSafeInteger(e.durationMs)||e.startMs<0||e.durationMs<0||e.startMs+e.durationMs>showMs){reason='原时序超出本场时长；不能裁剪或重定时';errors.push(e.id+'：'+reason)}
+      }
+      if(enabled){if(!e.id||ids.has(e.id))errors.push('事件身份缺失或重复：'+e.id);ids.add(e.id)}
+      // 能力已宣告且可编译的朝向轨：按相邻节点逐段成行，重叠段逐条排除（四键先转向再走），不裁剪不重定时。
+      if(stageFacing&&enabled&&t.performerId===path.performerId&&e.kind==='facing'&&compiled.get(e)){
+        var who=tally(t.performerId,true);
+        compiled.get(e).forEach((pr,i)=>{
+          var fid=e.id+'-f'+(i+1);
+          if(!fid||ids.has(fid))errors.push('事件身份缺失或重复：'+fid);ids.add(fid);
+          var overlaps=!segments||segments.some(seg=>pr.startMs<seg.startMs+seg.durationMs&&seg.startMs<pr.startMs+pr.durationMs);
+          if(overlaps)who.excludedCount++;else who.enabledCount++;
+          rows.push({trackId:t.id,performerId:t.performerId,dancerName,event:{id:fid,performerId:t.performerId,kind:'facing',startMs:pr.startMs,durationMs:pr.durationMs,command:'',name:'朝向过渡',playMode:'',
+            x1:{version:1,failurePolicy:'stopShow',mode:'transition',transitionFromDeg:pr.fromDeg,transitionToDeg:pr.toDeg}},
+            enabled:true,supported:!overlaps,reason:overlaps?'四键模式先转向再走：与路径段重叠的独立朝向本场排除，不能裁剪或重定时':'按原时刻执行'});
+        });
+        return;
+      }
+      if(t.performerId){var stat=tally(t.performerId,t.performerId===path.performerId);if(enabled){if(supported)stat.enabledCount++;else stat.excludedCount++}}
+      rows.push({trackId:t.id,performerId:t.performerId,dancerName,event:copy(e),enabled,supported,reason:reason||(supported?'按原时刻执行':'不执行')});
+    }));
+    (doc.lyrics||[]).forEach(e=>rows.push({event:copy(e),enabled:e.enabled!==false,supported:false,reason:'原曲歌词仅网页显示；须显式选择本机动作范围'}));
+    if(!context||String(context.actorId)!==path.actor.id||context.territoryId!==path.actor.territoryId)errors.push('当前角色读取不一致，请重新审阅');
+    if(showMs>MAX_SHOW_MS)errors.push('整场最长 '+(MAX_SHOW_MS/1000)+' 秒（当前 '+(showMs/1000)+' 秒）；不能裁剪或重定时');
+    if(rows.filter(x=>x.enabled&&x.supported&&x.performerId===path.performerId).length-1+segmentCount>MAX_EVENTS)errors.push('切分后本场合计最多 '+MAX_EVENTS+' 条事件；请减少路径节点或事件');
+    // 逐舞者汇总：所选舞者排最前，其余按首次出现顺序；无事件的舞者不入本场汇总。
+    var dancers=[per.get(path.performerId)].concat(order.filter(id=>id!==path.performerId).map(id=>per.get(id))).filter(Boolean);
+    return {path:copy(path),context:copy(context||{}),projectId:doc.id||path.projectId,name:doc.name||'',timelineRevision:doc.timelineRevision||0,rows,errors,segmentCount,showMs,stageFacing,facingIncluded,dancers};
+  }
+  // 无损切分：段边界优先取原创节点；超包络的直线段在精确插值点补刀，坐标/时刻/速度连续不变。
+  // TASK-20260919-PATH-LOCOMOTION：段步态=目标节点模式（同一节点对内的补刀段随该节点），逐段事件各自申报。
+  function segmentPath(path){
+    must(path&&Array.isArray(path.points)&&path.points.length>=2&&path.points[0].tMs===0,'路径数据不完整，不能切分');
+    var out=[],suffix=0;
+    for(var i=1;i<path.points.length;i++){
+      var a=path.points[i-1],b=path.points[i],dur=b.tMs-a.tMs;
+      must(Number.isSafeInteger(dur)&&dur>0,'路径时刻须为严格递增；不能自动排序或改时序');
+      var locomotion=b.move==='run'?'run':'walk';
+      var d=Math.hypot(b.x-a.x,b.z-a.z),n=Math.max(Math.ceil(dur/SEGMENT_MS),Math.ceil(d/SEGMENT_M),1);
+      while(Math.ceil(dur/n)>SEGMENT_MS||d/n>SEGMENT_M)n++;
+      for(var k=1;k<=n;k++){
+        var u0=(k-1)/n,u1=k/n;
+        var p0=k===1?a:{tMs:Math.round(a.tMs+dur*u0),x:a.x+(b.x-a.x)*u0,z:a.z+(b.z-a.z)*u0};
+        var p1=k===n?b:{tMs:Math.round(a.tMs+dur*u1),x:a.x+(b.x-a.x)*u1,z:a.z+(b.z-a.z)*u1};
+        must(p1.tMs>p0.tMs,'切分时刻退化；请检查路径节点时刻');
+        out.push({startMs:p0.tMs,durationMs:p1.tMs-p0.tMs,id:out.length?path.eventId+'-s'+(++suffix):path.eventId,locomotion,points:[{tMs:0,x:p0.x,z:p0.z},{tMs:p1.tMs-p0.tMs,x:p1.x,z:p1.z}]});
+      }
+    }
+    must(out.length,'没有可执行的路径段');
+    return out;
+  }
+  function packageFor(r,options){
+    must(options?.supportedScope===true,'请明确选择所选舞者的动作、自身技能和路径；所有排除项须审阅');
+    must(!r.errors.length,r.errors.join('\n'));
+    var included=r.rows.filter(x=>x.enabled&&x.supported&&x.performerId===r.path.performerId),times=new Set();
+    must(included.filter(x=>x.event.kind==='movement').length===1,'须有且仅有一条原始路径');
+    var segments=segmentPath(r.path);
+    must(included.length-1+segments.length<=MAX_EVENTS,'切分后本场合计最多 '+MAX_EVENTS+' 条事件；请减少路径节点或事件');
+    must(options.arrivalToleranceM>=.025&&options.arrivalToleranceM<=.12&&Number.isFinite(options.maxCorrectionM)&&options.maxCorrectionM>0,'请明确原始到达容差和修正界；容差限0.025至0.12米');
+    // 整场时长：末段路径或末条受支持朝向按原时序覆盖（与原生合同同口径），不裁剪不补时。
+    var durationMs=included.filter(x=>x.event.kind==='facing').reduce((m,x)=>Math.max(m,x.event.startMs+x.event.durationMs),r.path.durationMs);
+    must(Number.isSafeInteger(durationMs)&&durationMs>0&&durationMs<=MAX_SHOW_MS,'整场最长 '+(MAX_SHOW_MS/1000)+' 秒；不能裁剪或重定时');
+    var ids=new Set(),events=segments.map(s=>{
+      must(ids.has(s.id)||ids.add(s.id),'事件身份缺失或重复：'+s.id);
+      return {id:s.id,performerId:r.path.performerId,kind:'movement',startMs:s.startMs,durationMs:s.durationMs,command:'',name:'路径段',playMode:'',
+        x1:{version:1,failurePolicy:'stopShow',points:s.points,locomotion:s.locomotion,arrivalToleranceM:options.arrivalToleranceM,maxCorrectionM:options.maxCorrectionM}};
+    });
+    included.forEach(x=>{
+      var e=x.event,p=e.data?.rehearsalAbility;
+      if(e.kind==='movement')return;
+      must(!ids.has(e.id)&&ids.add(e.id),'事件身份缺失或重复：'+e.id);
+      if(e.kind==='facing'){events.push(copy(e));return}
+      must(e.startMs>0&&e.startMs<durationMs&&!times.has(e.startMs),'动作与技能须有各自明确触发时刻，不能自动重排');times.add(e.startMs);
+      var out={id:e.id,performerId:x.performerId,kind:e.kind,startMs:e.startMs,durationMs:e.durationMs,command:e.command||e.data?.command||'',name:e.name||e.data?.name||'',playMode:e.playMode||'once'};
+      if(e.kind==='motion'&&!out.command.endsWith(' motion'))out.command+=' motion';
+      if(e.kind==='ability')out.x1={version:1,failurePolicy:'skip',actionId:p.actionId,targetId:r.path.actor.id,requiredJobId:String(r.context.jobId),requiredLevel:1,requiredConditions:['jobMatches','levelMeets','targetValid','notCasting','cooldownReady','movementAllowed','controllable']};
+      events.push(out);
+    });
+    var pkg={protocolVersion:1,compiler:'stage-show-review-v2',projectId:r.path.projectId,name:r.name||r.path.dancerName+' · 有界短演出',durationMs,timelineRevision:r.timelineRevision,projectHash:'',
+      performers:[{id:r.path.performerId,name:r.path.dancerName}],events,capabilities:[{name:'x1-input-v1',minProtocol:1},{name:'movement-control',minProtocol:1}],
+      x1:{version:1,bindings:[{performerId:r.path.performerId,actorId:r.path.actor.id,territoryId:r.path.actor.territoryId,stage:{id:r.path.stage.id,originX:r.path.stage.originX,originZ:r.path.stage.originZ,yawDeg:r.path.stage.yawDeg}}]}};
+    if(pkg.events.some(e=>e.kind==='ability'))pkg.capabilities.push({name:'ability-execution',minProtocol:1});
+    if(pkg.events.some(e=>e.kind==='motion'))pkg.capabilities.push({name:'motion',minProtocol:1});
+    root.ChoreoX1Inputs.validatePackage(pkg.x1,pkg.events);return pkg;
+  }
+  root.ChoreoStageShow={review,packageFor,segmentPath,MAX_SHOW_MS,MAX_EVENTS,SEGMENT_MS,SEGMENT_M};if(typeof module!=='undefined')module.exports=root.ChoreoStageShow;
+})(typeof window!=='undefined'?window:globalThis);
